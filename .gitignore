@@ -1,0 +1,40 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Temporary processing files, uploaded PDFs & extracted text (Protect user privacy)
+temp_tasks/
+*.pdf
+*texts.json
+*translations.json
+
+# Environment and sensitive keys
+.env
+.env.*
+*.key
+*.pem
+
+# Testing and build artifacts
+.pytest_cache/
+dist/
+build/
+*.egg-info/
+
+# IDE & Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+ehthumbs.db

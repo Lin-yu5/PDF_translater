@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI PDF 文件排版翻譯器</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Noto Sans TC', sans-serif; }
+    .drop-active { border-color: #3b82f6 !important; background-color: #eff6ff !important; }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col justify-between">
+  <!-- Header -->
+  <header class="bg-white border-b border-slate-200 shadow-sm py-4 px-6">
+    <div class="max-w-4xl mx-auto flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <span class="text-3xl">📄</span>
+        <div>
+          <h1 class="text-xl font-bold text-slate-900">AI PDF 排版翻譯器</h1>
+          <p class="text-xs text-slate-500">原版面保留 • 段落結構完整 • 支援 Gemini / OpenAI</p>
+        </div>
+      </div>
+      <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">
+        <span class="w-2 h-2 mr-1.5 bg-emerald-500 rounded-full animate-pulse"></span> 本機服務就緒
+      </span>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="max-w-4xl mx-auto px-4 py-8 flex-1 w-full space-y-6">
+    <!-- Configuration Card -->
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 space-y-4">
+      <h2 class="text-base font-semibold text-slate-900 flex items-center">
+        <span class="mr-2">⚙️</span> 1. 翻譯 API 設定
+      </h2>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Provider Select -->
+        <div>
+          <label class="block text-xs font-medium text-slate-700 mb-1">AI 服務提供商</label>
+          <select id="provider" class="w-full rounded-lg border-slate-300 border px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+            <option value="gemini">Google Gemini API (推薦，速度快且品質高)</option>
+            <option value="openai">OpenAI / 相容 API (GPT-4o / DeepSeek 等)</option>
+          </select>
+        </div>
+
+        <!-- Target Language -->
+        <div>
+          <label class="block text-xs font-medium text-slate-700 mb-1">目標語言</label>
+          <select id="targetLang" class="w-full rounded-lg border-slate-300 border px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+            <option value="zh-TW" selected>繁體中文 (Traditional Chinese)</option>
+            <option value="zh-CN">簡體中文 (Simplified Chinese)</option>
+            <option value="en">英文 (English)</option>
+            <option value="ja">日文 (Japanese)</option>
+            <option value="ko">韓文 (Korean)</option>
+            <option value="es">西班牙文 (Spanish)</option>
+            <option value="fr">法文 (French)</option>
+            <option value="de">德文 (German)</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- API Key & Model -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <div class="flex justify-between items-center mb-1">
+            <label class="text-xs font-medium text-slate-700">API Key</label>
+            <span class="text-[11px] text-slate-400">僅存於本機瀏覽器</span>
+          </div>
+          <div class="relative">
+            <input type="password" id="apiKey" placeholder="請輸入 API Key" class="w-full rounded-lg border-slate-300 border px-3 py-2 text-sm pr-10 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+            <button type="button" id="toggleKey" class="absolute right-2.5 top-2.5 text-xs text-slate-400 hover:text-slate-600">顯示</button>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-medium text-slate-700 mb-1">模型名稱 (選填，保留預設即可)</label>
+          <input type="text" id="model" placeholder="gemini-2.5-flash" class="w-full rounded-lg border-slate-300 border px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+        </div>
+      </div>
+
+      <!-- Custom Base URL (OpenAI only) -->
+      <div id="baseUrlContainer" class="hidden">
+        <label class="block text-xs font-medium text-slate-700 mb-1">API Base URL (適用於 DeepSeek 或自建代理)</label>
+        <input type="text" id="baseUrl" placeholder="https://api.openai.com/v1" class="w-full rounded-lg border-slate-300 border px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+      </div>
+    </div>
+
+    <!-- Upload Card -->
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 space-y-4">
+      <h2 class="text-base font-semibold text-slate-900 flex items-center">
+        <span class="mr-2">📂</span> 2. 上傳 PDF 檔案
+      </h2>
+
+      <div id="dropZone" class="border-2 border-dashed border-slate-300 hover:border-blue-400 rounded-xl p-8 text-center cursor-pointer transition-colors duration-150">
+        <input type="file" id="fileInput" accept="application/pdf" class="hidden">
+        <div class="space-y-2 pointer-events-none">
+          <div class="text-4xl">📑</div>
+          <p class="text-sm font-medium text-slate-700">點擊選擇檔案，或將 PDF 拖曳至此</p>
+          <p class="text-xs text-slate-400">僅支援 PDF 格式檔案</p>
+        </div>
+      </div>
+
+      <!-- File info badge -->
+      <div id="fileInfo" class="hidden items-center justify-between p-3 bg-blue-50 border border-blue-200 rounded-lg">
+        <div class="flex items-center space-x-2 truncate">
+          <span class="text-blue-600">📄</span>
+          <span id="fileName" class="text-sm font-medium text-slate-800 truncate">document.pdf</span>
+          <span id="fileSize" class="text-xs text-slate-500">(1.2 MB)</span>
+        </div>
+        <button id="removeFile" class="text-xs text-red-500 hover:text-red-700 px-2 py-1">清除</button>
+      </div>
+
+      <!-- Action Button -->
+      <button id="startBtn" disabled class="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-medium py-3 px-4 rounded-xl shadow transition duration-150 flex items-center justify-center space-x-2">
+        <span>開始排版翻譯</span>
+      </button>
+    </div>
+
+    <!-- Status & Progress Card -->
+    <div id="progressCard" class="hidden bg-white rounded-xl shadow-sm border border-slate-200 p-6 space-y-4">
+      <h2 class="text-base font-semibold text-slate-900 flex items-center">
+        <span class="mr-2">⏳</span> 3. 處理進度
+      </h2>
+
+      <!-- Progress Bar -->
+      <div class="space-y-1">
+        <div class="flex justify-between text-xs text-slate-600">
+          <span id="progressStatus">正在初始化...</span>
+          <span id="progressPercent" class="font-semibold text-blue-600">0%</span>
+        </div>
+        <div class="w-full bg-slate-100 rounded-full h-3 overflow-hidden">
+          <div id="progressBar" class="bg-blue-600 h-3 rounded-full transition-all duration-300" style="width: 0%"></div>
+        </div>
+      </div>
+
+      <!-- Completion Result -->
+      <div id="resultBox" class="hidden p-4 bg-emerald-50 border border-emerald-200 rounded-xl space-y-3">
+        <div class="flex items-center space-x-2 text-emerald-800 font-medium text-sm">
+          <span>✅</span>
+          <span id="resultSummary">翻譯完成！</span>
+        </div>
+        <div class="flex space-x-3">
+          <a id="downloadBtn" href="#" download class="flex-1 text-center bg-emerald-600 hover:bg-emerald-700 text-white font-medium py-2.5 px-4 rounded-lg shadow transition">
+            📥 下載已翻譯 PDF
+          </a>
+        </div>
+      </div>
+
+      <!-- Error Box -->
+      <div id="errorBox" class="hidden p-4 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700 space-y-1">
+        <div class="font-semibold text-sm">⚠️ 處理失敗</div>
+        <p id="errorMsg">發生錯誤，請檢查 API Key 或網路連線。</p>
+      </div>
+    </div>
+  </main>
+
+  <!-- Footer -->
+  <footer class="py-4 text-center text-xs text-slate-400 border-t border-slate-200">
+    PDF 排版翻譯器 • 本機運行 • 安全保護個人文件隱私
+  </footer>
+
+  <script>
+    const providerEl = document.getElementById('provider');
+    const apiKeyEl = document.getElementById('apiKey');
+    const toggleKeyBtn = document.getElementById('toggleKey');
+    const modelEl = document.getElementById('model');
+    const baseUrlContainer = document.getElementById('baseUrlContainer');
+    const baseUrlEl = document.getElementById('baseUrl');
+    const targetLangEl = document.getElementById('targetLang');
+    const dropZone = document.getElementById('dropZone');
+    const fileInput = document.getElementById('fileInput');
+    const fileInfo = document.getElementById('fileInfo');
+    const fileName = document.getElementById('fileName');
+    const fileSize = document.getElementById('fileSize');
+    const removeFileBtn = document.getElementById('removeFile');
+    const startBtn = document.getElementById('startBtn');
+    const progressCard = document.getElementById('progressCard');
+    const progressBar = document.getElementById('progressBar');
+    const progressPercent = document.getElementById('progressPercent');
+    const progressStatus = document.getElementById('progressStatus');
+    const resultBox = document.getElementById('resultBox');
+    const resultSummary = document.getElementById('resultSummary');
+    const downloadBtn = document.getElementById('downloadBtn');
+    const errorBox = document.getElementById('errorBox');
+    const errorMsg = document.getElementById('errorMsg');
+
+    let currentFile = null;
+    let pollTimer = null;
+    let consecutivePollErrors = 0;
+    const MAX_POLL_ERRORS = 3;
+
+    // Safe storage helper (prevents DOMException in private/incognito browsing)
+    const safeStorage = {
+      get(key) {
+        try {
+          return localStorage.getItem(key);
+        } catch (e) {
+          console.warn('localStorage read error:', e);
+          return null;
+        }
+      },
+      set(key, val) {
+        try {
+          localStorage.setItem(key, val);
+        } catch (e) {
+          console.warn('localStorage write error:', e);
+        }
+      }
+    };
+
+    // Load saved settings
+    const savedProvider = safeStorage.get('pdf_trans_provider');
+    if (savedProvider) providerEl.value = savedProvider;
+    updateProviderUI();
+
+    const savedKey = safeStorage.get('pdf_trans_key_' + providerEl.value);
+    if (savedKey) apiKeyEl.value = savedKey;
+
+    const savedLang = safeStorage.get('pdf_trans_target_lang');
+    if (savedLang) targetLangEl.value = savedLang;
+
+    providerEl.addEventListener('change', () => {
+      safeStorage.set('pdf_trans_provider', providerEl.value);
+      updateProviderUI();
+      apiKeyEl.value = safeStorage.get('pdf_trans_key_' + providerEl.value) || '';
+      validateInputs();
+    });
+
+    targetLangEl.addEventListener('change', () => {
+      safeStorage.set('pdf_trans_target_lang', targetLangEl.value);
+    });
+
+    function updateProviderUI() {
+      const isGemini = providerEl.value === 'gemini';
+      baseUrlContainer.classList.toggle('hidden', isGemini);
+      modelEl.placeholder = isGemini ? 'gemini-2.5-flash' : 'gpt-4o-mini';
+    }
+
+    apiKeyEl.addEventListener('input', () => {
+      safeStorage.set('pdf_trans_key_' + providerEl.value, apiKeyEl.value.trim());
+      validateInputs();
+    });
+
+    toggleKeyBtn.addEventListener('click', () => {
+      const isPwd = apiKeyEl.type === 'password';
+      apiKeyEl.type = isPwd ? 'text' : 'password';
+      toggleKeyBtn.innerText = isPwd ? '隱藏' : '顯示';
+    });
+
+    // Prevent browser from navigating to dropped PDF outside dropZone
+    window.addEventListener('dragover', (e) => e.preventDefault());
+    window.addEventListener('drop', (e) => e.preventDefault());
+
+    // File selection
+    dropZone.addEventListener('click', () => fileInput.click());
+    dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('drop-active'); });
+    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drop-active'));
+    dropZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropZone.classList.remove('drop-active');
+      if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+        handleFileSelected(e.dataTransfer.files[0]);
+      }
+    });
+
+    fileInput.addEventListener('change', () => {
+      if (fileInput.files && fileInput.files[0]) {
+        handleFileSelected(fileInput.files[0]);
+      }
+    });
+
+    function handleFileSelected(file) {
+      if (!file.name.toLowerCase().endsWith('.pdf')) {
+        showError('請上傳 PDF 格式的文件！');
+        return;
+      }
+      currentFile = file;
+      fileName.innerText = file.name;
+      fileSize.innerText = `(${(file.size / (1024 * 1024)).toFixed(2)} MB)`;
+      dropZone.classList.add('hidden');
+      fileInfo.classList.remove('hidden');
+      fileInfo.classList.add('flex');
+      errorBox.classList.add('hidden');
+      validateInputs();
+    }
+
+    removeFileBtn.addEventListener('click', () => {
+      currentFile = null;
+      fileInput.value = '';
+      fileInfo.classList.add('hidden');
+      fileInfo.classList.remove('flex');
+      dropZone.classList.remove('hidden');
+      validateInputs();
+    });
+
+    function validateInputs() {
+      const hasKey = apiKeyEl.value.trim().length > 0;
+      const hasFile = currentFile !== null;
+      startBtn.disabled = !(hasKey && hasFile);
+    }
+
+    function setFormDisabled(disabled) {
+      providerEl.disabled = disabled;
+      apiKeyEl.disabled = disabled;
+      toggleKeyBtn.disabled = disabled;
+      modelEl.disabled = disabled;
+      baseUrlEl.disabled = disabled;
+      targetLangEl.disabled = disabled;
+      removeFileBtn.disabled = disabled;
+      fileInput.disabled = disabled;
+
+      if (disabled) {
+        startBtn.disabled = true;
+        startBtn.innerHTML = `
+          <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+          </svg>
+          <span>翻譯處理中...</span>
+        `;
+      } else {
+        startBtn.innerHTML = `<span>開始排版翻譯</span>`;
+        validateInputs();
+      }
+    }
+
+    // Start translation
+    startBtn.addEventListener('click', async () => {
+      if (!currentFile || !apiKeyEl.value.trim()) return;
+
+      setFormDisabled(true);
+      progressCard.classList.remove('hidden');
+      resultBox.classList.add('hidden');
+      errorBox.classList.add('hidden');
+      progressBar.style.width = '0%';
+      progressPercent.innerText = '0%';
+      progressStatus.innerText = '正在上傳文件與啟動任務...';
+
+      const formData = new FormData();
+      formData.append('file', currentFile);
+      formData.append('provider', providerEl.value);
+      formData.append('api_key', apiKeyEl.value.trim());
+      formData.append('target_lang', targetLangEl.value);
+      formData.append('model', modelEl.value.trim());
+      formData.append('base_url', baseUrlEl.value.trim());
+
+      try {
+        const resp = await fetch('/api/translate', { method: 'POST', body: formData });
+        if (!resp.ok) {
+          let detail = '啟動任務失敗';
+          try {
+            const err = await resp.json();
+            detail = err.detail || detail;
+          } catch (_) {
+            detail = `伺服器回應錯誤 (HTTP ${resp.status})`;
+          }
+          throw new Error(detail);
+        }
+        const data = await resp.json();
+        const taskId = data.task_id;
+        startPolling(taskId);
+      } catch (err) {
+        showError(err.message);
+        setFormDisabled(false);
+      }
+    });
+
+    function startPolling(taskId) {
+      if (pollTimer) clearTimeout(pollTimer);
+      consecutivePollErrors = 0;
+
+      const poll = async () => {
+        try {
+          const res = await fetch(`/api/status/${taskId}`);
+          if (!res.ok) {
+            let errorText = `無法取得任務進度 (HTTP ${res.status})`;
+            try {
+              const errJson = await res.json();
+              if (errJson.detail) errorText = errJson.detail;
+            } catch (_) {}
+            throw new Error(errorText);
+          }
+          const data = await res.json();
+          // Reset error counter on successful response
+          consecutivePollErrors = 0;
+
+          const progressVal = Math.min(Math.max(data.progress || 0, 0), 100);
+          progressBar.style.width = progressVal + '%';
+          progressPercent.innerText = progressVal + '%';
+          if (data.message) {
+            progressStatus.innerText = data.message;
+          }
+
+          if (data.status === 'completed') {
+            resultBox.classList.remove('hidden');
+            resultSummary.innerText = `翻譯成功！共處理 ${data.total_pages || 0} 頁，排版置換 ${data.translated_blocks || 0} 個文字區塊。`;
+            downloadBtn.href = `/api/download/${taskId}`;
+            const baseName = currentFile ? currentFile.name.replace(/\.pdf$/i, '') : 'translated';
+            downloadBtn.download = `${baseName}_${targetLangEl.value}.pdf`;
+            setFormDisabled(false);
+            return;
+          } else if (data.status === 'failed') {
+            showError(data.error || '翻譯過程發生錯誤');
+            setFormDisabled(false);
+            return;
+          }
+
+          // Continue polling
+          pollTimer = setTimeout(poll, 1000);
+        } catch (err) {
+          consecutivePollErrors++;
+          console.warn(`輪詢異常 (${consecutivePollErrors}/${MAX_POLL_ERRORS}):`, err.message);
+
+          if (consecutivePollErrors >= MAX_POLL_ERRORS) {
+            showError(`與伺服器連線中斷 (${err.message})，請確認後端服務運作狀態。`);
+            setFormDisabled(false);
+          } else {
+            progressStatus.innerText = `連線重試中 (${consecutivePollErrors}/${MAX_POLL_ERRORS})...`;
+            pollTimer = setTimeout(poll, 1500);
+          }
+        }
+      };
+
+      poll();
+    }
+
+    function showError(msg) {
+      errorBox.classList.remove('hidden');
+      errorMsg.innerText = msg;
+    }
+  </script>
+</body>
+</html>
