@@ -1,0 +1,741 @@
+{
+  "dimensions": {
+    "(960.0, 540.0)": 94
+  },
+  "rotations": {
+    "0": 94
+  },
+  "colorspaces": {
+    "3": 49
+  },
+  "fonts": {
+    "TrueType: BCDEEE+ArialMT": 1,
+    "TrueType: BCDFEE+Avenir Next LT Pro": 79,
+    "Type0: Microsoft JhengHei Regular": 5,
+    "TrueType: BCDGEE+Posterama": 60,
+    "Type0: BCDHEE+ArialMT": 58,
+    "TrueType: BCDIEE+Avenir Next LT Pro,Bold": 4,
+    "Type0: BCDJEE+Avenir Next LT Pro": 17,
+    "Type0: BCDKEE+DFKaiShu-SB-Estd-BF": 1,
+    "Type0: BCDLEE+MicrosoftJhengHeiRegular": 20,
+    "TrueType: BCDMEE+Roboto Slab,Bold": 1,
+    "Type0: BCDNEE+CambriaMath": 1,
+    "Type0: BCDOEE+Wingdings-Regular": 2
+  },
+  "total_text_blocks": 504,
+  "single_line_blocks": 228,
+  "multi_line_blocks": 276,
+  "pure_text_pages": [
+    2,
+    3,
+    6,
+    7,
+    9,
+    10,
+    11,
+    14,
+    18,
+    19,
+    22,
+    23,
+    24,
+    25,
+    26,
+    28,
+    29,
+    30,
+    31,
+    32,
+    33,
+    34,
+    35,
+    38,
+    40,
+    46,
+    47,
+    48,
+    49,
+    50,
+    53,
+    58,
+    60,
+    62,
+    63,
+    64,
+    65,
+    66,
+    67,
+    69,
+    71,
+    73,
+    74,
+    76,
+    77,
+    78,
+    80,
+    82,
+    83,
+    84,
+    85,
+    86,
+    87,
+    88,
+    91,
+    92
+  ],
+  "pure_image_pages": [
+    8,
+    13,
+    21,
+    37,
+    39,
+    41,
+    45,
+    52,
+    59,
+    61,
+    79,
+    81,
+    89,
+    90
+  ],
+  "mixed_pages": [
+    1,
+    4,
+    5,
+    12,
+    15,
+    16,
+    17,
+    20,
+    27,
+    36,
+    42,
+    43,
+    44,
+    51,
+    54,
+    55,
+    56,
+    57,
+    68,
+    70,
+    72,
+    75,
+    93,
+    94
+  ],
+  "empty_pages": [],
+  "broken_hyphen_count": 4,
+  "broken_hyphen_examples": [
+    [
+      35,
+      "4 個面向 (dissociated movement / grasping patterns/ protective extension reaction / weight-"
+    ],
+    [
+      66,
+      "Adaptive equipment training / casting and orthosis / CIMT / functional and goal-"
+    ],
+    [
+      75,
+      "https://www.muscletone.com.au/rigid-tap-vs-"
+    ],
+    [
+      80,
+      "• Only few programs have been rigorously evaluated in CP /  well-"
+    ]
+  ],
+  "symbol_formula_page_count": 58,
+  "total_image_blocks": 49,
+  "total_raw_images": 49,
+  "total_drawings": 341,
+  "ocr_sample_pages": {
+    "8": {
+      "page_width": 960.0,
+      "page_height": 540.0,
+      "render_ms": 177.7,
+      "full_page_ocr_ms": 3024.6,
+      "full_page_detected": 20,
+      "avg_confidence": 0.886,
+      "sample_texts": [
+        "Sensorimotor Problemsin",
+        "B0X29.2",
+        "ChildrenWithCerebral Palsy",
+        "1.Abnormal muscletone",
+        "Hypertonicity:increase in resting state of muscle"
+      ],
+      "text_blocks_in_pdf": 0,
+      "img_blocks_in_pdf": 1,
+      "raw_imgs_in_pdf": 1,
+      "clip_ocr": [
+        {
+          "block_idx": 0,
+          "bbox": [
+            48.0,
+            30.6,
+            892.4,
+            516.8
+          ],
+          "detected_count": 22,
+          "time_ms": 5075.2,
+          "texts": [
+            "BOx29.2SensorimotorProblemsin",
+            "Children With Cerebral Palsy",
+            "1.Abnormalmuscletone"
+          ]
+        }
+      ]
+    },
+    "13": {
+      "page_width": 960.0,
+      "page_height": 540.0,
+      "render_ms": 188.9,
+      "full_page_ocr_ms": 1399.4,
+      "full_page_detected": 26,
+      "avg_confidence": 0.842,
+      "sample_texts": [
+        "Classification of Cerebral Palsy",
+        "TABLE 29.1",
+        "Type of Movement",
+        "Area of Body Involved",
+        "Prevalence"
+      ],
+      "text_blocks_in_pdf": 0,
+      "img_blocks_in_pdf": 1,
+      "raw_imgs_in_pdf": 1,
+      "clip_ocr": [
+        {
+          "block_idx": 0,
+          "bbox": [
+            91.9,
+            26.1,
+            847.9,
+            520.1
+          ],
+          "detected_count": 26,
+          "time_ms": 3524.7,
+          "texts": [
+            "TABLE 29.1 Classification of Cerebral Palsy",
+            "Type of Movement",
+            "Area of Body Involved"
+          ]
+        }
+      ]
+    },
+    "16": {
+      "page_width": 960.0,
+      "page_height": 540.0,
+      "render_ms": 117.5,
+      "full_page_ocr_ms": 861.2,
+      "full_page_detected": 3,
+      "avg_confidence": 0.909,
+      "sample_texts": [
+        "Equinovalgus",
+        "Equinovarus",
+        "https://www.orthobullets.com/pediatrics/12120/cerebral-palsy--foot-conditions"
+      ],
+      "text_blocks_in_pdf": 2,
+      "img_blocks_in_pdf": 3,
+      "raw_imgs_in_pdf": 3,
+      "clip_ocr": [
+        {
+          "block_idx": 0,
+          "bbox": [
+            48.0,
+            204.6,
+            317.2,
+            399.9
+          ],
+          "detected_count": 0,
+          "time_ms": 293.2,
+          "texts": []
+        },
+        {
+          "block_idx": 1,
+          "bbox": [
+            394.2,
+            205.4,
+            647.5,
+            399.1
+          ],
+          "detected_count": 0,
+          "time_ms": 266.9,
+          "texts": []
+        },
+        {
+          "block_idx": 2,
+          "bbox": [
+            665.6,
+            93.8,
+            913.6,
+            481.8
+          ],
+          "detected_count": 0,
+          "time_ms": 636.7,
+          "texts": []
+        }
+      ]
+    },
+    "21": {
+      "page_width": 960.0,
+      "page_height": 540.0,
+      "render_ms": 259.3,
+      "full_page_ocr_ms": 3519.4,
+      "full_page_detected": 82,
+      "avg_confidence": 0.717,
+      "sample_texts": [
+        "表9-12",
+        "胸性麻依動作障凝形式分類",
+        "摘自小兒能治療學一書",
+        "徐動型",
+        "比例"
+      ],
+      "text_blocks_in_pdf": 0,
+      "img_blocks_in_pdf": 2,
+      "raw_imgs_in_pdf": 2,
+      "clip_ocr": [
+        {
+          "block_idx": 0,
+          "bbox": [
+            18.0,
+            12.3,
+            882.0,
+            540.0
+          ],
+          "detected_count": 78,
+          "time_ms": 6746.6,
+          "texts": [
+            "表9-12",
+            "胸性麻痹依作障凝形式分颗",
+            "摘自小兒能治療學"
+          ]
+        },
+        {
+          "block_idx": 1,
+          "bbox": [
+            679.7,
+            6.8,
+            952.9,
+            49.5
+          ],
+          "detected_count": 2,
+          "time_ms": 1061.4,
+          "texts": [
+            "1小兒能治學",
+            "摘自"
+          ]
+        }
+      ]
+    },
+    "37": {
+      "page_width": 960.0,
+      "page_height": 540.0,
+      "render_ms": 270.7,
+      "full_page_ocr_ms": 4391.1,
+      "full_page_detected": 43,
+      "avg_confidence": 0.9,
+      "sample_texts": [
+        "TABLE 29.2 Selected Upper Limb Assessments for BodyStructure,Function,and Activity for",
+        "Children With Cerebral Palsy",
+        "Age",
+        "Assessment",
+        "Domain and Activities"
+      ],
+      "text_blocks_in_pdf": 0,
+      "img_blocks_in_pdf": 1,
+      "raw_imgs_in_pdf": 1,
+      "clip_ocr": [
+        {
+          "block_idx": 0,
+          "bbox": [
+            22.0,
+            18.0,
+            916.4,
+            522.0
+          ],
+          "detected_count": 43,
+          "time_ms": 6856.8,
+          "texts": [
+            "TABLE 29.2 SelectedUpper LimbAssessmentsfor Body Structure,Function,and Activityfor",
+            "Children With Cerebral Palsy",
+            "Age"
+          ]
+        }
+      ]
+    },
+    "45": {
+      "page_width": 960.0,
+      "page_height": 540.0,
+      "render_ms": 229.6,
+      "full_page_ocr_ms": 948.6,
+      "full_page_detected": 7,
+      "avg_confidence": 0.726,
+      "sample_texts": [
+        "(c)",
+        "(a)",
+        "(b)",
+        "(d)",
+        "(e)"
+      ],
+      "text_blocks_in_pdf": 0,
+      "img_blocks_in_pdf": 2,
+      "raw_imgs_in_pdf": 2,
+      "clip_ocr": [
+        {
+          "block_idx": 0,
+          "bbox": [
+            32.2,
+            12.9,
+            912.0,
+            527.1
+          ],
+          "detected_count": 7,
+          "time_ms": 3008.0,
+          "texts": [
+            "(c)",
+            "(a)",
+            "(b)"
+          ]
+        },
+        {
+          "block_idx": 1,
+          "bbox": [
+            420.9,
+            500.6,
+            904.8,
+            540.0
+          ],
+          "detected_count": 1,
+          "time_ms": 97.0,
+          "texts": [
+            "摘自Treatmentof CPand MotorDelay(6\"P"
+          ]
+        }
+      ]
+    },
+    "59": {
+      "page_width": 960.0,
+      "page_height": 540.0,
+      "render_ms": 74.9,
+      "full_page_ocr_ms": 3283.6,
+      "full_page_detected": 54,
+      "avg_confidence": 0.849,
+      "sample_texts": [
+        "Eating and Drinking Ability Classification System - Algorithm",
+        "Is the individual",
+        "able to swallow",
+        "food and drink",
+        "without risk of"
+      ],
+      "text_blocks_in_pdf": 0,
+      "img_blocks_in_pdf": 1,
+      "raw_imgs_in_pdf": 1,
+      "clip_ocr": [
+        {
+          "block_idx": 0,
+          "bbox": [
+            23.7,
+            14.2,
+            875.8,
+            540.0
+          ],
+          "detected_count": 52,
+          "time_ms": 5191.5,
+          "texts": [
+            "Eating and Drinking Ability Classification System - Algorithm",
+            "Is the individual",
+            "able to swallow"
+          ]
+        }
+      ]
+    },
+    "75": {
+      "page_width": 960.0,
+      "page_height": 540.0,
+      "render_ms": 97.0,
+      "full_page_ocr_ms": 1610.7,
+      "full_page_detected": 18,
+      "avg_confidence": 0.899,
+      "sample_texts": [
+        "Occupation-focused intervention for Cp",
+        "--OT intervention approaches",
+        "**Therapeutic taping and strapping",
+        "Rigid tape: limit movement around a joint or to protect a joint",
+        "during functional movement"
+      ],
+      "text_blocks_in_pdf": 15,
+      "img_blocks_in_pdf": 2,
+      "raw_imgs_in_pdf": 2,
+      "clip_ocr": [
+        {
+          "block_idx": 0,
+          "bbox": [
+            639.7,
+            75.7,
+            960.0,
+            262.3
+          ],
+          "detected_count": 0,
+          "time_ms": 337.2,
+          "texts": []
+        },
+        {
+          "block_idx": 1,
+          "bbox": [
+            582.5,
+            305.7,
+            960.0,
+            540.0
+          ],
+          "detected_count": 1,
+          "time_ms": 820.1,
+          "texts": [
+            "(Photoscourtesyof PattyCoker-Bolt.)"
+          ]
+        }
+      ]
+    },
+    "89": {
+      "page_width": 960.0,
+      "page_height": 540.0,
+      "render_ms": 203.7,
+      "full_page_ocr_ms": 2322.1,
+      "full_page_detected": 23,
+      "avg_confidence": 0.692,
+      "sample_texts": [
+        "表9-16",
+        "癫肩發生的可能原因",
+        "部受傷而尊致部组鐵受摄",
+        "在出生时受傷或發高烧",
+        "某些菜物或有毒物質"
+      ],
+      "text_blocks_in_pdf": 0,
+      "img_blocks_in_pdf": 2,
+      "raw_imgs_in_pdf": 2,
+      "clip_ocr": [
+        {
+          "block_idx": 0,
+          "bbox": [
+            35.1,
+            12.9,
+            825.2,
+            496.1
+          ],
+          "detected_count": 20,
+          "time_ms": 4543.0,
+          "texts": [
+            "表9-16",
+            "膚發生的能原庆",
+            "頭部受傷而尊致瑙部组識受损"
+          ]
+        },
+        {
+          "block_idx": 1,
+          "bbox": [
+            688.6,
+            484.4,
+            960.0,
+            527.1
+          ],
+          "detected_count": 2,
+          "time_ms": 1016.4,
+          "texts": [
+            "小兒曦能治療",
+            "商自"
+          ]
+        }
+      ]
+    },
+    "94": {
+      "page_width": 960.0,
+      "page_height": 540.0,
+      "render_ms": 142.5,
+      "full_page_ocr_ms": 1503.2,
+      "full_page_detected": 11,
+      "avg_confidence": 0.906,
+      "sample_texts": [
+        "摘自Treatment of CP and Motor Delay (6th)",
+        "Techniques for Carrying the child correctly",
+        "Figures 9.202 and 9.203.Use of both arms,",
+        "eye-to-eye contact, separate tightly adducted legs",
+        "or very extended legs. Move the child to points"
+      ],
+      "text_blocks_in_pdf": 2,
+      "img_blocks_in_pdf": 2,
+      "raw_imgs_in_pdf": 2,
+      "clip_ocr": [
+        {
+          "block_idx": 0,
+          "bbox": [
+            29.7,
+            108.6,
+            434.8,
+            524.3
+          ],
+          "detected_count": 6,
+          "time_ms": 1688.1,
+          "texts": [
+            "Figures9.202and9.203.1",
+            "Useof botharms,",
+            "eye-to-eye contact, separate tightly adducted legs"
+          ]
+        },
+        {
+          "block_idx": 1,
+          "bbox": [
+            506.8,
+            110.4,
+            922.4,
+            521.5
+          ],
+          "detected_count": 4,
+          "time_ms": 1531.8,
+          "texts": [
+            "Figure 9.20o4.Head and trunk control,if the",
+            "child is moved slightly away from the adult's",
+            "chest.Correct extended-adducted-internally"
+          ]
+        }
+      ]
+    }
+  },
+  "potential_glitch_pages": [
+    {
+      "page": 1,
+      "text_blocks": 3,
+      "img_blocks": 2,
+      "raw_images": 2,
+      "overlaps": 4,
+      "drawings": 11
+    },
+    {
+      "page": 4,
+      "text_blocks": 2,
+      "img_blocks": 1,
+      "raw_images": 1,
+      "overlaps": 2,
+      "drawings": 5
+    },
+    {
+      "page": 5,
+      "text_blocks": 2,
+      "img_blocks": 1,
+      "raw_images": 1,
+      "overlaps": 2,
+      "drawings": 6
+    },
+    {
+      "page": 12,
+      "text_blocks": 1,
+      "img_blocks": 1,
+      "raw_images": 1,
+      "overlaps": 1,
+      "drawings": 3
+    },
+    {
+      "page": 15,
+      "text_blocks": 1,
+      "img_blocks": 1,
+      "raw_images": 1,
+      "overlaps": 1,
+      "drawings": 3
+    },
+    {
+      "page": 27,
+      "text_blocks": 1,
+      "img_blocks": 1,
+      "raw_images": 1,
+      "overlaps": 1,
+      "drawings": 14
+    },
+    {
+      "page": 36,
+      "text_blocks": 1,
+      "img_blocks": 1,
+      "raw_images": 1,
+      "overlaps": 1,
+      "drawings": 4
+    },
+    {
+      "page": 42,
+      "text_blocks": 1,
+      "img_blocks": 1,
+      "raw_images": 1,
+      "overlaps": 1,
+      "drawings": 3
+    },
+    {
+      "page": 43,
+      "text_blocks": 1,
+      "img_blocks": 1,
+      "raw_images": 1,
+      "overlaps": 1,
+      "drawings": 5
+    },
+    {
+      "page": 44,
+      "text_blocks": 1,
+      "img_blocks": 1,
+      "raw_images": 1,
+      "overlaps": 1,
+      "drawings": 5
+    },
+    {
+      "page": 51,
+      "text_blocks": 1,
+      "img_blocks": 1,
+      "raw_images": 1,
+      "overlaps": 1,
+      "drawings": 5
+    },
+    {
+      "page": 54,
+      "text_blocks": 1,
+      "img_blocks": 1,
+      "raw_images": 1,
+      "overlaps": 1,
+      "drawings": 4
+    },
+    {
+      "page": 55,
+      "text_blocks": 2,
+      "img_blocks": 1,
+      "raw_images": 1,
+      "overlaps": 2,
+      "drawings": 3
+    },
+    {
+      "page": 57,
+      "text_blocks": 1,
+      "img_blocks": 1,
+      "raw_images": 1,
+      "overlaps": 1,
+      "drawings": 3
+    },
+    {
+      "page": 70,
+      "text_blocks": 7,
+      "img_blocks": 1,
+      "raw_images": 1,
+      "overlaps": 1,
+      "drawings": 3
+    },
+    {
+      "page": 72,
+      "text_blocks": 7,
+      "img_blocks": 1,
+      "raw_images": 1,
+      "overlaps": 2,
+      "drawings": 3
+    },
+    {
+      "page": 75,
+      "text_blocks": 15,
+      "img_blocks": 2,
+      "raw_images": 2,
+      "overlaps": 2,
+      "drawings": 3
+    }
+  ],
+  "tight_bbox_count": 0
+}

@@ -3,245 +3,633 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AI PDF 文件排版翻譯器</title>
+  <title>文脈 FolioTrans - 專業 PDF 排版翻譯工作台</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
     body { font-family: 'Noto Sans TC', sans-serif; }
-    .drop-active { border-color: #3b82f6 !important; background-color: #eff6ff !important; }
+    .drop-active { border-color: #2563eb !important; background-color: #eff6ff !important; }
+    /* Custom scrollbars */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #f1f5f9; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
   </style>
 </head>
-<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col justify-between">
-  <!-- Header -->
-  <header class="bg-white border-b border-slate-200 shadow-sm py-4 px-6">
-    <div class="max-w-4xl mx-auto flex items-center justify-between">
-      <div class="flex items-center space-x-3">
-        <span class="text-3xl">📄</span>
-        <div>
-          <h1 class="text-xl font-bold text-slate-900">AI PDF 排版翻譯器</h1>
-          <p class="text-xs text-slate-500">原版面保留 • 段落結構完整 • 支援 Gemini / OpenAI</p>
-        </div>
+<body class="bg-slate-100 text-slate-800 min-h-screen flex flex-col h-screen overflow-hidden">
+
+  <!-- ================= TOP NAVBAR ================= -->
+  <header class="bg-white border-b border-slate-200 shadow-sm h-14 flex items-center justify-between px-6 z-20 flex-shrink-0">
+    <div class="flex items-center space-x-8">
+      <!-- Logo -->
+      <div class="flex items-center space-x-2">
+        <span class="text-xl font-extrabold text-blue-600 tracking-tight flex items-center">
+          <svg class="w-6 h-6 mr-1.5 inline text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+          </svg>
+          文脈 <span class="text-slate-800 font-semibold ml-1 text-base">FolioTrans</span>
+        </span>
       </div>
-      <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">
-        <span class="w-2 h-2 mr-1.5 bg-emerald-500 rounded-full animate-pulse"></span> 本機服務就緒
-      </span>
+
+      <!-- Navigation Tabs -->
+      <nav class="hidden md:flex items-center space-x-1">
+        <button class="px-3 py-1.5 text-sm font-semibold text-blue-600 border-b-2 border-blue-600">翻譯工作台</button>
+        <button onclick="alert('專業詞彙表管理：目前已內建醫學專用詞彙表 (GMFCS, MACS, ROM, CIMT 等 17 筆)')" class="px-3 py-1.5 text-sm font-medium text-slate-600 hover:text-slate-900 transition">專業詞彙表</button>
+        <button onclick="alert('Skills 規則庫：已啟用 translation_rules, academic_rules, medical_terms 3 份核心規則')" class="px-3 py-1.5 text-sm font-medium text-slate-600 hover:text-slate-900 transition">Skills 規則庫</button>
+        <button onclick="alert('處理管線：第一階段文字層覆寫 (PyMuPDF) -> 第二階段圖表 OCR 覆寫 (RapidOCR)')" class="px-3 py-1.5 text-sm font-medium text-slate-600 hover:text-slate-900 transition">處理管線</button>
+        <!-- Export Center Dropdown -->
+        <div class="relative">
+          <button id="exportMenuBtn" onclick="toggleExportMenu()" class="px-3 py-1.5 text-sm font-medium text-slate-600 hover:text-slate-900 transition flex items-center space-x-1">
+            <span>匯出中心</span>
+            <svg class="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+          </button>
+          <div id="exportDropdown" class="hidden absolute left-0 mt-1 w-64 bg-white border border-slate-200 rounded-lg shadow-xl py-1.5 z-50 text-xs">
+            <button onclick="triggerExport('pdf')" class="w-full text-left px-3.5 py-2.5 hover:bg-blue-50 flex items-center space-x-2 text-slate-700 transition">
+              <span class="text-base">📄</span>
+              <div>
+                <div class="font-semibold text-slate-800">完整排版譯文 PDF</div>
+                <div class="text-[11px] text-slate-500">保留版面、幾何座標與圖表文字覆寫</div>
+              </div>
+            </button>
+            <button onclick="triggerExport('bilingual')" class="w-full text-left px-3.5 py-2.5 hover:bg-blue-50 flex items-center space-x-2 text-slate-700 transition border-t border-slate-100">
+              <span class="text-base">📖</span>
+              <div>
+                <div class="font-semibold text-blue-700">左右雙語對照 PDF</div>
+                <div class="text-[11px] text-slate-500">左右 2-up 雙頁對齊，方便逐頁對照審校</div>
+              </div>
+            </button>
+            <button onclick="triggerExport('docx')" class="w-full text-left px-3.5 py-2.5 hover:bg-blue-50 flex items-center space-x-2 text-slate-700 transition border-t border-slate-100">
+              <span class="text-base">📝</span>
+              <div>
+                <div class="font-semibold text-indigo-700">雙語段落 Word 檔 (.docx)</div>
+                <div class="text-[11px] text-slate-500">表格化段落對照，方便二次編輯與出版引用</div>
+              </div>
+            </button>
+          </div>
+        </div>
+      </nav>
+    </div>
+
+    <!-- Right Actions -->
+    <div class="flex items-center space-x-3">
+      <button id="navDownloadBtn" disabled class="bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-medium text-sm py-2 px-4 rounded-lg shadow-sm transition flex items-center space-x-1.5">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+        </svg>
+        <span>下載譯文 PDF</span>
+      </button>
     </div>
   </header>
 
-  <!-- Main Content -->
-  <main class="max-w-4xl mx-auto px-4 py-8 flex-1 w-full space-y-6">
-    <!-- Configuration Card -->
-    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 space-y-4">
-      <h2 class="text-base font-semibold text-slate-900 flex items-center">
-        <span class="mr-2">⚙️</span> 1. 翻譯 API 設定
-      </h2>
+  <!-- ================= WORKSPACE BODY ================= -->
+  <div class="flex-1 flex overflow-hidden">
 
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <!-- Provider Select -->
-        <div>
-          <label class="block text-xs font-medium text-slate-700 mb-1">AI 服務提供商</label>
-          <select id="provider" class="w-full rounded-lg border-slate-300 border px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
-            <option value="gemini">Google Gemini API (推薦，速度快且品質高)</option>
-            <option value="openai">OpenAI / 相容 API (GPT-4o / DeepSeek 等)</option>
-          </select>
-        </div>
+    <!-- ========== LEFT SIDEBAR ========== -->
+    <aside class="w-72 bg-white border-r border-slate-200 flex flex-col justify-between overflow-y-auto flex-shrink-0 z-10 text-xs">
+      <div class="p-4 space-y-4">
 
-        <!-- Target Language -->
-        <div>
-          <label class="block text-xs font-medium text-slate-700 mb-1">目標語言</label>
-          <select id="targetLang" class="w-full rounded-lg border-slate-300 border px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
-            <option value="zh-TW" selected>繁體中文 (Traditional Chinese)</option>
-            <option value="zh-CN">簡體中文 (Simplified Chinese)</option>
-            <option value="en">英文 (English)</option>
-            <option value="ja">日文 (Japanese)</option>
-            <option value="ko">韓文 (Korean)</option>
-            <option value="es">西班牙文 (Spanish)</option>
-            <option value="fr">法文 (French)</option>
-            <option value="de">德文 (German)</option>
-          </select>
-        </div>
-      </div>
-
-      <!-- API Key & Model -->
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
-          <div class="flex justify-between items-center mb-1">
-            <label class="text-xs font-medium text-slate-700">API Key</label>
-            <span class="text-[11px] text-slate-400">僅存於本機瀏覽器</span>
+        <!-- File Card -->
+        <div class="border border-slate-200 rounded-lg p-3 bg-slate-50">
+          <div class="flex items-center justify-between">
+            <span id="sidebarFileName" class="font-bold text-slate-900 text-sm truncate max-w-[170px]" title="請先載入 PDF">未載入文件</span>
+            <button id="changeFileBtn" class="text-blue-600 hover:text-blue-800 text-xs font-semibold">上傳/更換</button>
           </div>
-          <div class="relative">
-            <input type="password" id="apiKey" placeholder="請輸入 API Key" class="w-full rounded-lg border-slate-300 border px-3 py-2 text-sm pr-10 focus:ring-2 focus:ring-blue-500 focus:outline-none">
-            <button type="button" id="toggleKey" class="absolute right-2.5 top-2.5 text-xs text-slate-400 hover:text-slate-600">顯示</button>
+          <p id="sidebarFileSize" class="text-slate-400 text-[11px] mt-0.5">支援文字與掃描型混合 PDF</p>
+        </div>
+
+        <!-- Languages -->
+        <div class="space-y-2">
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="block font-medium text-slate-600 mb-1">來源語言</label>
+              <select id="sourceLang" class="w-full bg-white border border-slate-300 rounded px-2 py-1.5 text-xs text-slate-700 focus:ring-1 focus:ring-blue-500">
+                <option value="auto">自動偵測</option>
+                <option value="en" selected>英文 (English)</option>
+              </select>
+            </div>
+            <div>
+              <label class="block font-medium text-slate-600 mb-1">目標語言</label>
+              <select id="targetLang" class="w-full bg-white border border-slate-300 rounded px-2 py-1.5 text-xs text-slate-700 focus:ring-1 focus:ring-blue-500">
+                <option value="zh-TW" selected>繁體中文 (台灣)</option>
+                <option value="zh-CN">簡體中文</option>
+                <option value="ja">日文</option>
+                <option value="ko">韓文</option>
+                <option value="en">英文</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Academic Domain -->
+          <div>
+            <label class="block font-medium text-slate-600 mb-1">學術翻譯領域</label>
+            <select id="domainSelect" class="w-full bg-white border border-slate-300 rounded px-2 py-1.5 text-xs text-slate-700 focus:ring-1 focus:ring-blue-500">
+              <option value="medical" selected>醫學 / 臨床 / 復健治療</option>
+              <option value="academic">通用學術論文</option>
+              <option value="engineering">工程 / 資訊科技</option>
+              <option value="legal">法律 / 專利規章</option>
+              <option value="general">一般文獻手冊</option>
+            </select>
+          </div>
+
+          <!-- Font Style Toggle -->
+          <div>
+            <label class="block font-medium text-slate-600 mb-1">回填譯文字體</label>
+            <div class="grid grid-cols-2 gap-1 bg-slate-100 p-1 rounded">
+              <button type="button" id="btnMingti" class="py-1 font-semibold text-center rounded bg-white shadow-sm text-blue-600">明體 (襯線)</button>
+              <button type="button" id="btnHeiti" class="py-1 font-medium text-center rounded text-slate-600 hover:text-slate-900">黑體 (無襯線)</button>
+            </div>
+          </div>
+
+          <!-- Two-phase OCR toggle -->
+          <div class="pt-1">
+            <label class="flex items-start space-x-2 cursor-pointer">
+              <input type="checkbox" id="enableOcrCheckbox" checked class="mt-0.5 rounded text-blue-600 focus:ring-blue-500">
+              <span class="text-slate-700 leading-snug">
+                混合型兩階段翻譯<br>
+                <span class="text-[11px] text-slate-400 font-normal">先文字層、再補譯圖表與掃描區域 (RapidOCR)</span>
+              </span>
+            </label>
           </div>
         </div>
 
-        <div>
-          <label class="block text-xs font-medium text-slate-700 mb-1">模型名稱 (選填，保留預設即可)</label>
-          <input type="text" id="model" placeholder="gemini-2.5-flash" class="w-full rounded-lg border-slate-300 border px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+        <!-- Meta badges -->
+        <div class="border-t border-slate-200 pt-3 space-y-1.5 text-[11px] text-slate-600">
+          <div class="flex justify-between items-center">
+            <span>專業詞彙表：<strong class="text-slate-800">17 筆核心醫學詞彙</strong></span>
+            <button onclick="alert('已加載醫學核心詞庫（17項標準規範）：\n• CP (Cerebral Palsy 腦性麻痺)\n• GMFCS (粗大動作功能分類系統)\n• MACS (手部操作能力分類系統)\n• ROM (關節活動度)\n• CIMT (限制-誘發動作治療)\n• Spasticity (痙攣型)\n• Dyskinetic (動作障礙型)\n• Ataxic (運動失調型)\n• OT/PT (職能治療/物理治療)\n• PNF, NDT 等臨床術語')" class="text-blue-600 hover:underline">管理/檢視</button>
+          </div>
+          <div class="flex justify-between items-center">
+            <span>疊加 Skills：<strong class="text-slate-800">5 份已啟用</strong></span>
+            <button onclick="alert('已成功疊加 5 份完整技能庫：\n1. translation_rules.md (排版輸出與純度規則)\n2. academic_rules.md (學術引用、統計指標與章節規範)\n3. medical_terms.md (腦性麻痺臨床專門詞彙表)\n4. translate-pdf/SKILL.md (多語言樣式排版保留技能)\n5. pdf/SKILL.md (PDF 結構與表格保護技能)')" class="text-blue-600 hover:underline">檢視清單</button>
+          </div>
+          <div class="text-slate-400">版面保護：自動跳過公式 / 引用文獻 / DOI</div>
+        </div>
+
+        <!-- API Settings Collapsible -->
+        <div class="border border-slate-200 rounded-lg p-2.5 bg-slate-50">
+          <button id="toggleApiSettings" class="w-full flex justify-between items-center font-semibold text-slate-700 text-xs">
+            <span>⚙️ AI API 連線設定</span>
+            <span id="apiArrow">▼</span>
+          </button>
+          <div id="apiSettingsBody" class="mt-2 space-y-2">
+            <div>
+              <label class="block text-slate-500 mb-0.5">提供商</label>
+              <select id="provider" class="w-full bg-white border border-slate-300 rounded px-2 py-1 text-xs">
+                <option value="gemini">Google Gemini (官方免費 / 推薦)</option>
+                <option value="openai">OpenAI (GPT-4o 系列)</option>
+                <option value="deepseek">DeepSeek (超高性價比 / DeepSeek-V3)</option>
+                <option value="claude">Anthropic Claude (高品質學術翻譯)</option>
+                <option value="ollama">本地 Ollama (完全離線 / 免費開源)</option>
+                <option value="custom">自訂相容 API (OpenAI 相容協議)</option>
+              </select>
+            </div>
+            <div>
+              <div class="flex justify-between items-center mb-0.5">
+                <label class="block text-slate-500 font-medium">API Key</label>
+                <div class="flex items-center space-x-1">
+                  <button type="button" id="openApiKeyGuideBtn" class="text-[10px] text-blue-600 hover:text-blue-800 font-bold flex items-center bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200 transition">
+                    <span>❓ 免費 Key 指南</span>
+                  </button>
+                  <a id="getApiKeyLink" href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" class="text-[10px] text-slate-500 hover:text-blue-600 hover:underline flex items-center">
+                    <span>Google AI Studio ↗</span>
+                  </a>
+                </div>
+              </div>
+              <div class="relative">
+                <input type="password" id="apiKey" placeholder="請貼上 API Key (僅儲存於本機瀏覽器)" class="w-full bg-white border border-slate-300 rounded px-2 py-1 pr-12 text-xs">
+                <button type="button" id="toggleKey" class="absolute right-1 top-1 text-[10px] text-slate-400 hover:text-slate-700 px-1">顯示</button>
+              </div>
+            </div>
+            <div>
+              <label class="block text-slate-500 mb-0.5 font-medium">AI 翻譯模型</label>
+              <select id="modelSelect" class="w-full bg-white border border-slate-300 rounded px-2 py-1 text-xs text-slate-800 font-medium">
+                <option value="gemini-2.0-flash" selected>🌟 Gemini 2.0 Flash (官方最新次世代 / 推薦超高速)</option>
+                <option value="gemini-2.0-flash-lite">⚡ Gemini 2.0 Flash-Lite (極速輕量高吞吐)</option>
+                <option value="gemini-1.5-flash">⚡ Gemini 1.5 Flash (穩定高配額)</option>
+                <option value="gemini-1.5-pro">🧠 Gemini 1.5 Pro (深度醫學學術旗艦)</option>
+                <option value="custom">✏️ 自訂模型名稱...</option>
+              </select>
+              <input type="text" id="modelCustom" placeholder="請輸入自訂模型名稱" class="w-full bg-white border border-slate-300 rounded px-2 py-1 text-xs mt-1 hidden">
+            </div>
+            <div id="baseUrlContainer" class="hidden">
+              <label class="block text-slate-500 mb-0.5">Base URL (Ollama 填 http://localhost:11434/v1)</label>
+              <input type="text" id="baseUrl" placeholder="https://api.openai.com/v1" class="w-full bg-white border border-slate-300 rounded px-2 py-1 text-xs">
+            </div>
+          </div>
+        </div>
+
+        <!-- Main Run / Stop Buttons -->
+        <div class="space-y-2">
+          <button id="startBtn" disabled class="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-bold py-2.5 px-4 rounded-lg shadow-sm transition flex items-center justify-center space-x-1.5 text-sm">
+            <span>開始雙階段翻譯</span>
+          </button>
+          <button id="stopBtn" class="hidden w-full border border-red-300 text-red-600 hover:bg-red-50 font-bold py-2 px-4 rounded-lg transition flex items-center justify-center space-x-1.5 text-xs">
+            <span class="w-2.5 h-2.5 bg-red-600 rounded-sm"></span>
+            <span>中止翻譯作業</span>
+          </button>
+        </div>
+
+        <!-- Progress Tracking -->
+        <div id="sidebarProgressBox" class="hidden space-y-1.5 border-t border-slate-200 pt-3">
+          <div class="flex justify-between text-[11px] font-semibold text-slate-700">
+            <span id="phaseLabel">第一階段：文字型翻譯</span>
+            <span id="phasePercent" class="text-blue-600">0%</span>
+          </div>
+          <div class="w-full bg-slate-200 rounded-full h-1.5 overflow-hidden">
+            <div id="sidebarProgressBar" class="bg-blue-600 h-1.5 rounded-full transition-all duration-300" style="width: 0%"></div>
+          </div>
+          <p id="sidebarStatusText" class="text-[10px] text-slate-400 truncate">準備中...</p>
+        </div>
+
+        <!-- Page List Section -->
+        <div class="border-t border-slate-200 pt-3 flex-1 flex flex-col">
+          <div class="flex justify-between items-center mb-2">
+            <span class="font-bold text-slate-700">頁面清單</span>
+            <span id="pageListCount" class="text-slate-400">0 頁</span>
+          </div>
+          <div id="pageThumbnailList" class="space-y-1.5 max-h-56 overflow-y-auto pr-1">
+            <div class="text-center text-slate-400 py-4">請先載入 PDF 檔案</div>
+          </div>
+        </div>
+
+      </div>
+    </aside>
+
+    <!-- ========== MAIN CANVAS VIEW ========== -->
+    <main class="flex-1 flex flex-col bg-slate-200 overflow-hidden">
+
+      <!-- View Toolbar -->
+      <div class="bg-white border-b border-slate-200 h-11 px-4 flex items-center justify-between text-xs flex-shrink-0 z-10 shadow-xs">
+        <!-- Page Pager -->
+        <div class="flex items-center space-x-3">
+          <div class="flex items-center border border-slate-300 rounded overflow-hidden">
+            <button id="prevPageBtn" class="px-2 py-1 hover:bg-slate-100 disabled:opacity-30 disabled:hover:bg-white">◀</button>
+            <div class="px-3 py-1 font-semibold text-slate-700 border-x border-slate-300 bg-slate-50">
+              <span id="currentPageNum">1</span> / <span id="totalPagesNum">1</span>
+            </div>
+            <button id="nextPageBtn" class="px-2 py-1 hover:bg-slate-100 disabled:opacity-30 disabled:hover:bg-white">▶</button>
+          </div>
+          <span id="currentPageBadge" class="inline-flex items-center px-2 py-0.5 rounded text-[11px] bg-slate-100 text-slate-600 font-medium">
+            掃描/文字型
+          </span>
+        </div>
+
+        <!-- View Mode Switcher -->
+        <div class="flex items-center space-x-1 bg-slate-100 p-0.5 rounded">
+          <button id="viewTransOnlyBtn" class="px-3 py-1 font-medium rounded text-slate-600 hover:text-slate-900 transition">譯文預覽</button>
+          <button id="viewSideBySideBtn" class="px-3 py-1 font-semibold rounded bg-white shadow-xs text-blue-600 transition">原文 / 譯文並排</button>
+          <button id="viewOrigOnlyBtn" class="px-3 py-1 font-medium rounded text-slate-600 hover:text-slate-900 transition">檢視原文</button>
+        </div>
+
+        <!-- Controls -->
+        <div class="flex items-center space-x-3">
+          <label class="flex items-center space-x-1.5 cursor-pointer">
+            <input type="checkbox" id="showBboxCheckbox" class="rounded text-blue-600">
+            <span class="text-slate-600">顯示區塊框</span>
+          </label>
+          <div class="flex items-center border border-slate-300 rounded px-1.5 py-0.5 text-slate-600 space-x-1">
+            <button id="zoomOutBtn" class="hover:text-blue-600 font-bold px-1">−</button>
+            <span id="zoomLabel" class="font-semibold text-[11px] px-1">100%</span>
+            <button id="zoomInBtn" class="hover:text-blue-600 font-bold px-1">+</button>
+          </div>
         </div>
       </div>
 
-      <!-- Custom Base URL (OpenAI only) -->
-      <div id="baseUrlContainer" class="hidden">
-        <label class="block text-xs font-medium text-slate-700 mb-1">API Base URL (適用於 DeepSeek 或自建代理)</label>
-        <input type="text" id="baseUrl" placeholder="https://api.openai.com/v1" class="w-full rounded-lg border-slate-300 border px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+      <!-- Current Action Banner -->
+      <div id="workbenchBanner" class="bg-blue-50 border-b border-blue-100 px-4 py-2 flex items-center justify-between text-xs text-blue-800">
+        <div class="flex items-center space-x-2">
+          <svg class="animate-spin w-3.5 h-3.5 text-blue-600" viewBox="0 0 24 24" fill="none">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+          </svg>
+          <span id="workbenchBannerText">準備就緒，請上傳 PDF 開始翻譯作業。</span>
+        </div>
+        <div class="text-[11px] text-blue-600" id="workbenchStatsBadge"></div>
       </div>
-    </div>
 
-    <!-- Upload Card -->
-    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 space-y-4">
-      <h2 class="text-base font-semibold text-slate-900 flex items-center">
-        <span class="mr-2">📂</span> 2. 上傳 PDF 檔案
-      </h2>
+      <!-- Split Canvas View -->
+      <div class="flex-1 overflow-auto p-4 flex justify-center items-start">
+        <div id="splitViewerContainer" class="flex space-x-6 items-start max-w-full">
 
-      <div id="dropZone" class="border-2 border-dashed border-slate-300 hover:border-blue-400 rounded-xl p-8 text-center cursor-pointer transition-colors duration-150">
+          <!-- Left: Original Page -->
+          <div id="origPageCard" class="bg-white rounded-lg shadow-md border border-slate-300 overflow-hidden flex flex-col transition-all duration-200">
+            <div class="bg-slate-100 px-3 py-1.5 border-b border-slate-200 flex justify-between items-center text-xs text-slate-600 font-medium">
+              <span>原始 PDF 版面</span>
+              <span id="origPageDim" class="text-[11px] text-slate-400">第 1 頁 • 960 × 540 pt</span>
+            </div>
+            <div class="p-2 flex justify-center items-center bg-slate-50 min-h-[400px]">
+              <img id="origPageImg" src="" alt="原始頁面" class="max-w-full h-auto object-contain shadow-xs border border-slate-200 hidden">
+              <div id="origPagePlaceholder" class="text-slate-400 text-xs py-24 text-center">
+                尚未載入頁面
+              </div>
+            </div>
+          </div>
+
+          <!-- Right: Translated Page -->
+          <div id="transPageCard" class="bg-white rounded-lg shadow-md border border-slate-300 overflow-hidden flex flex-col transition-all duration-200">
+            <div class="bg-slate-100 px-3 py-1.5 border-b border-slate-200 flex justify-between items-center text-xs text-slate-600 font-medium">
+              <span class="text-blue-700">排版保留譯文 (點選區塊即可編輯)</span>
+              <span id="transPageDim" class="text-[11px] text-slate-400">第 1 頁 • 960 × 540 pt</span>
+            </div>
+            <div class="p-2 flex justify-center items-center bg-slate-50 min-h-[400px]">
+              <img id="transPageImg" src="" alt="譯文頁面" class="max-w-full h-auto object-contain shadow-xs border border-slate-200 hidden">
+              <div id="transPagePlaceholder" class="text-slate-400 text-xs py-24 text-center">
+                翻譯完成後將即時顯示於此
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <!-- ================= UPLOAD MODAL ================= -->
+  <div id="uploadModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4 z-50">
+    <div class="bg-white rounded-2xl shadow-xl max-w-lg w-full p-6 space-y-4">
+      <div class="flex justify-between items-center">
+        <h2 class="text-lg font-bold text-slate-900 flex items-center">
+          <span class="text-blue-600 mr-2">📄</span> 載入 PDF 文件
+        </h2>
+        <button id="closeModalBtn" class="text-slate-400 hover:text-slate-600 text-sm font-semibold">✕</button>
+      </div>
+
+      <!-- Drag & Drop Zone -->
+      <div id="dropZone" class="border-2 border-dashed border-slate-300 hover:border-blue-500 rounded-xl p-8 text-center cursor-pointer transition bg-slate-50">
         <input type="file" id="fileInput" accept="application/pdf" class="hidden">
         <div class="space-y-2 pointer-events-none">
-          <div class="text-4xl">📑</div>
-          <p class="text-sm font-medium text-slate-700">點擊選擇檔案，或將 PDF 拖曳至此</p>
-          <p class="text-xs text-slate-400">僅支援 PDF 格式檔案</p>
+          <div class="text-4xl text-blue-500">📑</div>
+          <p class="text-sm font-semibold text-slate-700">點擊選擇檔案，或拖曳 PDF 至此</p>
+          <p class="text-xs text-slate-400">支援學術論文、醫學簡報、掃描書籍等各式 PDF</p>
         </div>
       </div>
 
-      <!-- File info badge -->
-      <div id="fileInfo" class="hidden items-center justify-between p-3 bg-blue-50 border border-blue-200 rounded-lg">
-        <div class="flex items-center space-x-2 truncate">
-          <span class="text-blue-600">📄</span>
-          <span id="fileName" class="text-sm font-medium text-slate-800 truncate">document.pdf</span>
-          <span id="fileSize" class="text-xs text-slate-500">(1.2 MB)</span>
-        </div>
-        <button id="removeFile" class="text-xs text-red-500 hover:text-red-700 px-2 py-1">清除</button>
-      </div>
-
-      <!-- Action Button -->
-      <button id="startBtn" disabled class="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-medium py-3 px-4 rounded-xl shadow transition duration-150 flex items-center justify-center space-x-2">
-        <span>開始排版翻譯</span>
-      </button>
-    </div>
-
-    <!-- Status & Progress Card -->
-    <div id="progressCard" class="hidden bg-white rounded-xl shadow-sm border border-slate-200 p-6 space-y-4">
-      <h2 class="text-base font-semibold text-slate-900 flex items-center">
-        <span class="mr-2">⏳</span> 3. 處理進度
-      </h2>
-
-      <!-- Progress Bar -->
-      <div class="space-y-1">
-        <div class="flex justify-between text-xs text-slate-600">
-          <span id="progressStatus">正在初始化...</span>
-          <span id="progressPercent" class="font-semibold text-blue-600">0%</span>
-        </div>
-        <div class="w-full bg-slate-100 rounded-full h-3 overflow-hidden">
-          <div id="progressBar" class="bg-blue-600 h-3 rounded-full transition-all duration-300" style="width: 0%"></div>
-        </div>
-      </div>
-
-      <!-- Completion Result -->
-      <div id="resultBox" class="hidden p-4 bg-emerald-50 border border-emerald-200 rounded-xl space-y-3">
-        <div class="flex items-center space-x-2 text-emerald-800 font-medium text-sm">
-          <span>✅</span>
-          <span id="resultSummary">翻譯完成！</span>
-        </div>
-        <div class="flex space-x-3">
-          <a id="downloadBtn" href="#" download class="flex-1 text-center bg-emerald-600 hover:bg-emerald-700 text-white font-medium py-2.5 px-4 rounded-lg shadow transition">
-            📥 下載已翻譯 PDF
-          </a>
-        </div>
-      </div>
-
-      <!-- Error Box -->
-      <div id="errorBox" class="hidden p-4 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700 space-y-1">
-        <div class="font-semibold text-sm">⚠️ 處理失敗</div>
-        <p id="errorMsg">發生錯誤，請檢查 API Key 或網路連線。</p>
+      <!-- Quick sample load -->
+      <div class="flex items-center justify-between text-xs border-t border-slate-200 pt-3">
+        <span class="text-slate-500">快速測試檔案：</span>
+        <button id="loadSampleBtn" class="text-blue-600 font-semibold hover:underline flex items-center space-x-1">
+          <span>載入 CP.pdf (94 頁 混合型腦性麻痺臨床簡報)</span>
+        </button>
       </div>
     </div>
-  </main>
+  </div>
 
-  <!-- Footer -->
-  <footer class="py-4 text-center text-xs text-slate-400 border-t border-slate-200">
-    PDF 排版翻譯器 • 本機運行 • 安全保護個人文件隱私
-  </footer>
-
+  <!-- JavaScript Application Logic -->
   <script>
+    // Safe storage helper
+    const safeStorage = {
+      getItem(k) { try { return localStorage.getItem(k); } catch(e) { return null; } },
+      setItem(k, v) { try { localStorage.setItem(k, v); } catch(e) {} }
+    };
+
+    // State
+    let currentFile = null;
+    let currentTaskId = null;
+    let currentPage = 1;
+    let totalPages = 1;
+    let pagesMetadata = [];
+    let zoomLevel = 1.0;
+    let pollInterval = null;
+    let consecutivePollErrors = 0;
+    let currentFont = 'mingti';
+    let viewMode = 'sideBySide'; // 'sideBySide', 'transOnly', 'origOnly'
+
+    // DOM References
+    const uploadModal = document.getElementById('uploadModal');
+    const closeModalBtn = document.getElementById('closeModalBtn');
+    const dropZone = document.getElementById('dropZone');
+    const fileInput = document.getElementById('fileInput');
+    const loadSampleBtn = document.getElementById('loadSampleBtn');
+    const changeFileBtn = document.getElementById('changeFileBtn');
+
+    const sidebarFileName = document.getElementById('sidebarFileName');
+    const sidebarFileSize = document.getElementById('sidebarFileSize');
     const providerEl = document.getElementById('provider');
     const apiKeyEl = document.getElementById('apiKey');
     const toggleKeyBtn = document.getElementById('toggleKey');
-    const modelEl = document.getElementById('model');
-    const baseUrlContainer = document.getElementById('baseUrlContainer');
+    const modelSelect = document.getElementById('modelSelect');
+    const modelCustom = document.getElementById('modelCustom');
+    const getApiKeyLink = document.getElementById('getApiKeyLink');
     const baseUrlEl = document.getElementById('baseUrl');
+    const baseUrlContainer = document.getElementById('baseUrlContainer');
+    const domainSelect = document.getElementById('domainSelect');
     const targetLangEl = document.getElementById('targetLang');
-    const dropZone = document.getElementById('dropZone');
-    const fileInput = document.getElementById('fileInput');
-    const fileInfo = document.getElementById('fileInfo');
-    const fileName = document.getElementById('fileName');
-    const fileSize = document.getElementById('fileSize');
-    const removeFileBtn = document.getElementById('removeFile');
+    const enableOcrCheckbox = document.getElementById('enableOcrCheckbox');
+    const btnMingti = document.getElementById('btnMingti');
+    const btnHeiti = document.getElementById('btnHeiti');
+
     const startBtn = document.getElementById('startBtn');
-    const progressCard = document.getElementById('progressCard');
-    const progressBar = document.getElementById('progressBar');
-    const progressPercent = document.getElementById('progressPercent');
-    const progressStatus = document.getElementById('progressStatus');
-    const resultBox = document.getElementById('resultBox');
-    const resultSummary = document.getElementById('resultSummary');
-    const downloadBtn = document.getElementById('downloadBtn');
-    const errorBox = document.getElementById('errorBox');
-    const errorMsg = document.getElementById('errorMsg');
+    const stopBtn = document.getElementById('stopBtn');
+    const navDownloadBtn = document.getElementById('navDownloadBtn');
+    const sidebarProgressBox = document.getElementById('sidebarProgressBox');
+    const sidebarProgressBar = document.getElementById('sidebarProgressBar');
+    const phaseLabel = document.getElementById('phaseLabel');
+    const phasePercent = document.getElementById('phasePercent');
+    const sidebarStatusText = document.getElementById('sidebarStatusText');
+    const pageListCount = document.getElementById('pageListCount');
+    const pageThumbnailList = document.getElementById('pageThumbnailList');
 
-    let currentFile = null;
-    let pollTimer = null;
-    let consecutivePollErrors = 0;
-    const MAX_POLL_ERRORS = 3;
+    const currentPageNum = document.getElementById('currentPageNum');
+    const totalPagesNum = document.getElementById('totalPagesNum');
+    const currentPageBadge = document.getElementById('currentPageBadge');
+    const prevPageBtn = document.getElementById('prevPageBtn');
+    const nextPageBtn = document.getElementById('nextPageBtn');
 
-    // Safe storage helper (prevents DOMException in private/incognito browsing)
-    const safeStorage = {
-      get(key) {
-        try {
-          return localStorage.getItem(key);
-        } catch (e) {
-          console.warn('localStorage read error:', e);
-          return null;
-        }
-      },
-      set(key, val) {
-        try {
-          localStorage.setItem(key, val);
-        } catch (e) {
-          console.warn('localStorage write error:', e);
-        }
-      }
+    const viewTransOnlyBtn = document.getElementById('viewTransOnlyBtn');
+    const viewSideBySideBtn = document.getElementById('viewSideBySideBtn');
+    const viewOrigOnlyBtn = document.getElementById('viewOrigOnlyBtn');
+    const origPageCard = document.getElementById('origPageCard');
+    const transPageCard = document.getElementById('transPageCard');
+    const origPageImg = document.getElementById('origPageImg');
+    const transPageImg = document.getElementById('transPageImg');
+    const origPagePlaceholder = document.getElementById('origPagePlaceholder');
+    const transPagePlaceholder = document.getElementById('transPagePlaceholder');
+    const origPageDim = document.getElementById('origPageDim');
+    const transPageDim = document.getElementById('transPageDim');
+
+    const workbenchBanner = document.getElementById('workbenchBanner');
+    const workbenchBannerText = document.getElementById('workbenchBannerText');
+    const workbenchStatsBadge = document.getElementById('workbenchStatsBadge');
+
+    const toggleApiSettings = document.getElementById('toggleApiSettings');
+    const apiSettingsBody = document.getElementById('apiSettingsBody');
+    const apiArrow = document.getElementById('apiArrow');
+
+    // Prevent global drag-drop navigation
+    window.addEventListener('dragover', (e) => e.preventDefault());
+    window.addEventListener('drop', (e) => e.preventDefault());
+
+    // Restore saved settings
+    window.toggleExportMenu = function() {
+      const el = document.getElementById('exportDropdown');
+      if (el) el.classList.toggle('hidden');
     };
 
-    // Load saved settings
-    const savedProvider = safeStorage.get('pdf_trans_provider');
-    if (savedProvider) providerEl.value = savedProvider;
+    window.triggerExport = function(format) {
+      if (!currentTaskId) {
+        alert('請先上傳 PDF 並完成翻譯後再進行匯出');
+        return;
+      }
+      const el = document.getElementById('exportDropdown');
+      if (el) el.classList.add('hidden');
+      window.location.href = `/api/export/${currentTaskId}?format=${format}`;
+    };
+
+    document.addEventListener('click', (e) => {
+      const menu = document.getElementById('exportDropdown');
+      const btn = document.getElementById('exportMenuBtn');
+      if (menu && btn && !menu.contains(e.target) && !btn.contains(e.target)) {
+        menu.classList.add('hidden');
+      }
+    });
+
+    const savedProvider = safeStorage.getItem('foliotrans_provider') || 'gemini';
+    providerEl.value = savedProvider;
     updateProviderUI();
+    apiKeyEl.value = safeStorage.getItem('foliotrans_key_' + savedProvider) || '';
+    if (safeStorage.getItem('foliotrans_domain')) domainSelect.value = safeStorage.getItem('foliotrans_domain');
+    if (safeStorage.getItem('foliotrans_targetLang')) targetLangEl.value = safeStorage.getItem('foliotrans_targetLang');
 
-    const savedKey = safeStorage.get('pdf_trans_key_' + providerEl.value);
-    if (savedKey) apiKeyEl.value = savedKey;
+    // Auto-resume active task if user reloads browser
+    const savedTaskId = safeStorage.getItem('foliotrans_active_task');
+    if (savedTaskId) {
+      fetch(`/api/status/${savedTaskId}`).then(r => r.json()).then(data => {
+        if (data.status === 'processing') {
+          currentTaskId = savedTaskId;
+          sidebarProgressBox.classList.remove('hidden');
+          stopBtn.classList.remove('hidden');
+          startBtn.disabled = true;
+          fetchPagesMeta(savedTaskId);
+          startPolling(savedTaskId);
+        } else if (data.status === 'completed') {
+          currentTaskId = savedTaskId;
+          fetchPagesMeta(savedTaskId);
+          navDownloadBtn.disabled = false;
+          navDownloadBtn.onclick = () => window.location.href = `/api/download/${savedTaskId}`;
+          workbenchBannerText.innerText = `先前任務已就緒（共 ${data.total_pages} 頁，總置換 ${data.total_translated} 處），可直接於畫布預覽或點擊下載。`;
+        }
+      }).catch(() => {});
+    }
 
-    const savedLang = safeStorage.get('pdf_trans_target_lang');
-    if (savedLang) targetLangEl.value = savedLang;
-
+    // Provider UI switch
     providerEl.addEventListener('change', () => {
-      safeStorage.set('pdf_trans_provider', providerEl.value);
+      safeStorage.setItem('foliotrans_provider', providerEl.value);
       updateProviderUI();
-      apiKeyEl.value = safeStorage.get('pdf_trans_key_' + providerEl.value) || '';
-      validateInputs();
+      apiKeyEl.value = safeStorage.getItem('foliotrans_key_' + providerEl.value) || '';
+      validateForm();
     });
 
-    targetLangEl.addEventListener('change', () => {
-      safeStorage.set('pdf_trans_target_lang', targetLangEl.value);
+    modelSelect.addEventListener('change', () => {
+      modelCustom.classList.toggle('hidden', modelSelect.value !== 'custom');
     });
+
+    function getSelectedModel() {
+      if (modelSelect.value === 'custom') {
+        return modelCustom.value.trim();
+      }
+      return modelSelect.value;
+    }
 
     function updateProviderUI() {
-      const isGemini = providerEl.value === 'gemini';
+      const p = providerEl.value;
+      const isGemini = p === 'gemini';
+      const isOllama = p === 'ollama';
+      const isDeepSeek = p === 'deepseek';
+      const isClaude = p === 'claude';
+      const isOpenAI = p === 'openai';
+      const isCustom = p === 'custom';
+
+      // Base URL visibility and auto-fill
       baseUrlContainer.classList.toggle('hidden', isGemini);
-      modelEl.placeholder = isGemini ? 'gemini-2.5-flash' : 'gpt-4o-mini';
+      if (isOllama && !baseUrlEl.value) baseUrlEl.value = 'http://localhost:11434/v1';
+      else if (isDeepSeek && !baseUrlEl.value) baseUrlEl.value = 'https://api.deepseek.com/v1';
+      else if (isOpenAI && (!baseUrlEl.value || baseUrlEl.value.includes('deepseek') || baseUrlEl.value.includes('localhost'))) baseUrlEl.value = 'https://api.openai.com/v1';
+
+      // Helper link
+      if (isGemini) {
+        openApiKeyGuideBtn.classList.remove('hidden');
+        getApiKeyLink.href = 'https://aistudio.google.com/app/apikey';
+        getApiKeyLink.querySelector('span').innerText = 'Google AI Studio ↗';
+      } else if (isDeepSeek) {
+        openApiKeyGuideBtn.classList.add('hidden');
+        getApiKeyLink.href = 'https://platform.deepseek.com/api_keys';
+        getApiKeyLink.querySelector('span').innerText = '取得 DeepSeek API Key ↗';
+      } else if (isOpenAI) {
+        openApiKeyGuideBtn.classList.add('hidden');
+        getApiKeyLink.href = 'https://platform.openai.com/api-keys';
+        getApiKeyLink.querySelector('span').innerText = '取得 OpenAI Key ↗';
+      } else if (isClaude) {
+        openApiKeyGuideBtn.classList.add('hidden');
+        getApiKeyLink.href = 'https://console.anthropic.com/settings/keys';
+        getApiKeyLink.querySelector('span').innerText = '取得 Anthropic Key ↗';
+      } else if (isOllama) {
+        openApiKeyGuideBtn.classList.add('hidden');
+        getApiKeyLink.href = 'https://ollama.com/library';
+        getApiKeyLink.querySelector('span').innerText = 'Ollama 模型庫 (本機免 Key) ↗';
+      } else {
+        openApiKeyGuideBtn.classList.add('hidden');
+        getApiKeyLink.href = '#';
+        getApiKeyLink.querySelector('span').innerText = '相容 API 服務商 ↗';
+      }
+
+      // Populate models based on provider
+      if (isGemini) {
+        modelSelect.innerHTML = `
+          <option value="gemini-2.0-flash" selected>🌟 Gemini 2.0 Flash (官方最新次世代 / 推薦超高速)</option>
+          <option value="gemini-2.0-flash-lite">⚡ Gemini 2.0 Flash-Lite (極速輕量高吞吐)</option>
+          <option value="gemini-1.5-flash">⚡ Gemini 1.5 Flash (穩定高配額)</option>
+          <option value="gemini-1.5-pro">🧠 Gemini 1.5 Pro (深度醫學學術旗艦)</option>
+          <option value="custom">✏️ 自訂模型名稱...</option>
+        `;
+      } else if (isDeepSeek) {
+        modelSelect.innerHTML = `
+          <option value="deepseek-chat" selected>🌟 DeepSeek-V3 (超強性價比 / deepseek-chat)</option>
+          <option value="deepseek-reasoner">🧠 DeepSeek-R1 (深度推理 / 數學醫學強項)</option>
+          <option value="custom">✏️ 自訂模型名稱...</option>
+        `;
+      } else if (isOpenAI) {
+        modelSelect.innerHTML = `
+          <option value="gpt-4o" selected>🌟 GPT-4o (全能旗艦)</option>
+          <option value="gpt-4o-mini">⚡ GPT-4o-mini (極速省成本)</option>
+          <option value="o1-mini">🧠 o1-mini (推理模型)</option>
+          <option value="custom">✏️ 自訂模型名稱...</option>
+        `;
+      } else if (isClaude) {
+        modelSelect.innerHTML = `
+          <option value="claude-3-5-sonnet-20241022" selected>🌟 Claude 3.5 Sonnet (學術翻譯頂級)</option>
+          <option value="claude-3-5-haiku-20241022">⚡ Claude 3.5 Haiku (輕量快速)</option>
+          <option value="custom">✏️ 自訂模型名稱...</option>
+        `;
+      } else if (isOllama) {
+        modelSelect.innerHTML = `
+          <option value="qwen2.5:7b" selected>💻 Qwen 2.5:7b (推薦中文強 / 輕量快速)</option>
+          <option value="qwen2.5:14b">💻 Qwen 2.5:14b (翻譯品質卓越)</option>
+          <option value="llama3.1:8b">🦙 Llama 3.1:8b (Meta 開源旗艦)</option>
+          <option value="deepseek-r1:7b">🧠 DeepSeek-R1:7b (本地推理模型)</option>
+          <option value="custom">✏️ 自訂 Ollama 模型名稱...</option>
+        `;
+      } else {
+        modelSelect.innerHTML = `
+          <option value="gpt-4o-mini" selected>標準相容模型 (gpt-4o-mini)</option>
+          <option value="custom">✏️ 自訂模型名稱...</option>
+        `;
+      }
+      modelCustom.classList.add('hidden');
+      modelCustom.value = '';
     }
 
     apiKeyEl.addEventListener('input', () => {
-      safeStorage.set('pdf_trans_key_' + providerEl.value, apiKeyEl.value.trim());
-      validateInputs();
+      safeStorage.setItem('foliotrans_key_' + providerEl.value, apiKeyEl.value.trim());
+      validateForm();
+    });
+
+    domainSelect.addEventListener('change', () => {
+      safeStorage.setItem('foliotrans_domain', domainSelect.value);
+    });
+
+    targetLangEl.addEventListener('change', () => {
+      safeStorage.setItem('foliotrans_targetLang', targetLangEl.value);
     });
 
     toggleKeyBtn.addEventListener('click', () => {
@@ -250,11 +638,36 @@
       toggleKeyBtn.innerText = isPwd ? '隱藏' : '顯示';
     });
 
-    // Prevent browser from navigating to dropped PDF outside dropZone
-    window.addEventListener('dragover', (e) => e.preventDefault());
-    window.addEventListener('drop', (e) => e.preventDefault());
+    // Font style switch
+    btnMingti.addEventListener('click', () => {
+      currentFont = 'mingti';
+      btnMingti.className = 'py-1 font-semibold text-center rounded bg-white shadow-sm text-blue-600';
+      btnHeiti.className = 'py-1 font-medium text-center rounded text-slate-600 hover:text-slate-900';
+    });
+    btnHeiti.addEventListener('click', () => {
+      currentFont = 'heiti';
+      btnHeiti.className = 'py-1 font-semibold text-center rounded bg-white shadow-sm text-blue-600';
+      btnMingti.className = 'py-1 font-medium text-center rounded text-slate-600 hover:text-slate-900';
+    });
 
-    // File selection
+    // Collapsible API Settings
+    toggleApiSettings.addEventListener('click', () => {
+      const isHidden = apiSettingsBody.classList.toggle('hidden');
+      apiArrow.innerText = isHidden ? '▶' : '▼';
+    });
+
+    // Modal triggers
+    changeFileBtn.addEventListener('click', () => uploadModal.classList.remove('hidden'));
+    closeModalBtn.addEventListener('click', () => {
+      uploadModal.classList.add('hidden');
+    });
+    uploadModal.addEventListener('click', (e) => {
+      if (e.target === uploadModal) {
+        uploadModal.classList.add('hidden');
+      }
+    });
+
+    // Dropzone logic
     dropZone.addEventListener('click', () => fileInput.click());
     dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('drop-active'); });
     dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drop-active'));
@@ -262,175 +675,438 @@
       e.preventDefault();
       dropZone.classList.remove('drop-active');
       if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-        handleFileSelected(e.dataTransfer.files[0]);
+        handleFileSelect(e.dataTransfer.files[0]);
       }
     });
 
     fileInput.addEventListener('change', () => {
       if (fileInput.files && fileInput.files[0]) {
-        handleFileSelected(fileInput.files[0]);
+        handleFileSelect(fileInput.files[0]);
       }
     });
 
-    function handleFileSelected(file) {
+    // Quick load sample CP.pdf
+    loadSampleBtn.addEventListener('click', async () => {
+      try {
+        loadSampleBtn.innerText = '正在載入 CP.pdf...';
+        const resp = await fetch('/CP.pdf');
+        if (!resp.ok) {
+          // If not in root, try fetching from api or fallback
+          throw new Error('CP.pdf 尚未置於伺服器靜態路徑');
+        }
+        const blob = await resp.blob();
+        const file = new File([blob], 'CP.pdf', { type: 'application/pdf' });
+        handleFileSelect(file);
+      } catch (err) {
+        // Create an alert prompting the user
+        alert('請將 CP.pdf 拖曳至上傳區域，或置於專案目錄下。');
+        loadSampleBtn.innerText = '載入 CP.pdf (94 頁 混合型腦性麻痺臨床簡報)';
+      }
+    });
+
+    function handleFileSelect(file) {
       if (!file.name.toLowerCase().endsWith('.pdf')) {
-        showError('請上傳 PDF 格式的文件！');
+        alert('請上傳 .pdf 格式檔案');
         return;
       }
       currentFile = file;
-      fileName.innerText = file.name;
-      fileSize.innerText = `(${(file.size / (1024 * 1024)).toFixed(2)} MB)`;
-      dropZone.classList.add('hidden');
-      fileInfo.classList.remove('hidden');
-      fileInfo.classList.add('flex');
-      errorBox.classList.add('hidden');
-      validateInputs();
+      sidebarFileName.innerText = file.name;
+      sidebarFileName.title = file.name;
+      sidebarFileSize.innerText = `${(file.size / (1024 * 1024)).toFixed(2)} MB • ${file.name}`;
+      uploadModal.classList.add('hidden');
+      validateForm();
+      workbenchBannerText.innerText = `已載入 ${file.name}，請填入 API Key 並點選「開始雙階段翻譯」。`;
     }
 
-    removeFileBtn.addEventListener('click', () => {
-      currentFile = null;
-      fileInput.value = '';
-      fileInfo.classList.add('hidden');
-      fileInfo.classList.remove('flex');
-      dropZone.classList.remove('hidden');
-      validateInputs();
+    function validateForm() {
+      const hasFile = currentFile !== null;
+      const isOllama = providerEl.value === 'ollama';
+      const hasKey = isOllama || apiKeyEl.value.trim().length > 0;
+      startBtn.disabled = !(hasFile && hasKey);
+    }
+
+    // View Mode buttons
+    viewSideBySideBtn.addEventListener('click', () => setViewMode('sideBySide'));
+    viewTransOnlyBtn.addEventListener('click', () => setViewMode('transOnly'));
+    viewOrigOnlyBtn.addEventListener('click', () => setViewMode('origOnly'));
+
+    function setViewMode(mode) {
+      viewMode = mode;
+      viewSideBySideBtn.className = mode === 'sideBySide' ? 'px-3 py-1 font-semibold rounded bg-white shadow-xs text-blue-600 transition' : 'px-3 py-1 font-medium rounded text-slate-600 hover:text-slate-900 transition';
+      viewTransOnlyBtn.className = mode === 'transOnly' ? 'px-3 py-1 font-semibold rounded bg-white shadow-xs text-blue-600 transition' : 'px-3 py-1 font-medium rounded text-slate-600 hover:text-slate-900 transition';
+      viewOrigOnlyBtn.className = mode === 'origOnly' ? 'px-3 py-1 font-semibold rounded bg-white shadow-xs text-blue-600 transition' : 'px-3 py-1 font-medium rounded text-slate-600 hover:text-slate-900 transition';
+
+      origPageCard.classList.toggle('hidden', mode === 'transOnly');
+      transPageCard.classList.toggle('hidden', mode === 'origOnly');
+    }
+
+    // Zoom buttons
+    document.getElementById('zoomInBtn').addEventListener('click', () => {
+      zoomLevel = Math.min(zoomLevel + 0.15, 2.5);
+      applyZoom();
+    });
+    document.getElementById('zoomOutBtn').addEventListener('click', () => {
+      zoomLevel = Math.max(zoomLevel - 0.15, 0.5);
+      applyZoom();
+    });
+    function applyZoom() {
+      document.getElementById('zoomLabel').innerText = `${Math.round(zoomLevel * 100)}%`;
+      origPageImg.style.transform = `scale(${zoomLevel})`;
+      origPageImg.style.transformOrigin = 'top center';
+      transPageImg.style.transform = `scale(${zoomLevel})`;
+      transPageImg.style.transformOrigin = 'top center';
+    }
+
+    // Pager controls
+    prevPageBtn.addEventListener('click', () => {
+      if (currentPage > 1) {
+        selectPage(currentPage - 1);
+      }
+    });
+    nextPageBtn.addEventListener('click', () => {
+      if (currentPage < totalPages) {
+        selectPage(currentPage + 1);
+      }
     });
 
-    function validateInputs() {
-      const hasKey = apiKeyEl.value.trim().length > 0;
-      const hasFile = currentFile !== null;
-      startBtn.disabled = !(hasKey && hasFile);
-    }
+    function selectPage(p) {
+      currentPage = p;
+      currentPageNum.innerText = p;
+      prevPageBtn.disabled = p <= 1;
+      nextPageBtn.disabled = p >= totalPages;
 
-    function setFormDisabled(disabled) {
-      providerEl.disabled = disabled;
-      apiKeyEl.disabled = disabled;
-      toggleKeyBtn.disabled = disabled;
-      modelEl.disabled = disabled;
-      baseUrlEl.disabled = disabled;
-      targetLangEl.disabled = disabled;
-      removeFileBtn.disabled = disabled;
-      fileInput.disabled = disabled;
+      // Update thumbnails active state
+      document.querySelectorAll('.page-thumb-item').forEach(el => {
+        const isCurrent = el.dataset.page == p;
+        el.className = isCurrent 
+          ? 'page-thumb-item border-2 border-blue-500 rounded p-2 bg-blue-50/50 cursor-pointer flex justify-between items-center transition'
+          : 'page-thumb-item border border-slate-200 rounded p-2 bg-white hover:bg-slate-50 cursor-pointer flex justify-between items-center transition';
+      });
 
-      if (disabled) {
-        startBtn.disabled = true;
-        startBtn.innerHTML = `
-          <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
-          </svg>
-          <span>翻譯處理中...</span>
-        `;
-      } else {
-        startBtn.innerHTML = `<span>開始排版翻譯</span>`;
-        validateInputs();
+      // Update badge
+      if (pagesMetadata[p - 1]) {
+        const meta = pagesMetadata[p - 1];
+        const typeLabel = meta.page_type === 'scan' ? '掃描型' : (meta.page_type === 'mixed' ? '混合型' : '文字型');
+        currentPageBadge.innerText = `${typeLabel} • 偵測到 ${meta.img_blocks} 處圖片物件`;
+        origPageDim.innerText = `第 ${p} 頁 • ${meta.width} × ${meta.height} pt`;
+        transPageDim.innerText = `第 ${p} 頁 • ${meta.width} × ${meta.height} pt`;
+      }
+
+      // Load rendered images if taskId available
+      if (currentTaskId) {
+        loadPageImages(currentTaskId, p);
       }
     }
 
-    // Start translation
+    function loadPageImages(taskId, pageNum) {
+      origPagePlaceholder.classList.add('hidden');
+      origPageImg.classList.remove('hidden');
+      origPageImg.src = `/api/page-image/${taskId}/${pageNum}?type=original`;
+
+      transPagePlaceholder.classList.add('hidden');
+      transPageImg.classList.remove('hidden');
+      transPageImg.src = `/api/page-image/${taskId}/${pageNum}?type=translated`;
+    }
+
+    // Start Translation Action
     startBtn.addEventListener('click', async () => {
       if (!currentFile || !apiKeyEl.value.trim()) return;
 
-      setFormDisabled(true);
-      progressCard.classList.remove('hidden');
-      resultBox.classList.add('hidden');
-      errorBox.classList.add('hidden');
-      progressBar.style.width = '0%';
-      progressPercent.innerText = '0%';
-      progressStatus.innerText = '正在上傳文件與啟動任務...';
+      startBtn.disabled = true;
+      stopBtn.classList.remove('hidden');
+      sidebarProgressBox.classList.remove('hidden');
+      navDownloadBtn.disabled = true;
 
       const formData = new FormData();
       formData.append('file', currentFile);
       formData.append('provider', providerEl.value);
       formData.append('api_key', apiKeyEl.value.trim());
       formData.append('target_lang', targetLangEl.value);
-      formData.append('model', modelEl.value.trim());
+      formData.append('model', getSelectedModel());
       formData.append('base_url', baseUrlEl.value.trim());
+      formData.append('domain', domainSelect.value);
+      formData.append('font_style', currentFont);
+      formData.append('enable_ocr', enableOcrCheckbox.checked);
+
+      workbenchBannerText.innerText = '正在上傳 PDF 與分析各頁結構...';
 
       try {
         const resp = await fetch('/api/translate', { method: 'POST', body: formData });
         if (!resp.ok) {
-          let detail = '啟動任務失敗';
-          try {
-            const err = await resp.json();
-            detail = err.detail || detail;
-          } catch (_) {
-            detail = `伺服器回應錯誤 (HTTP ${resp.status})`;
-          }
-          throw new Error(detail);
+          const err = await resp.json().catch(() => ({ detail: '伺服器錯誤' }));
+          throw new Error(err.detail || '啟動翻譯失敗');
         }
         const data = await resp.json();
-        const taskId = data.task_id;
-        startPolling(taskId);
+        currentTaskId = data.task_id;
+        safeStorage.setItem('foliotrans_active_task', currentTaskId);
+        totalPages = data.total_pages || 1;
+        totalPagesNum.innerText = totalPages;
+
+        // Fetch pages metadata
+        fetchPagesMeta(currentTaskId);
+
+        // Start polling
+        startPolling(currentTaskId);
       } catch (err) {
-        showError(err.message);
-        setFormDisabled(false);
+        alert('錯誤: ' + err.message);
+        startBtn.disabled = false;
+        stopBtn.classList.add('hidden');
       }
     });
 
+    async function fetchPagesMeta(taskId) {
+      try {
+        const r = await fetch(`/api/pages/${taskId}`);
+        if (r.ok) {
+          const d = await r.json();
+          pagesMetadata = d.pages || [];
+          totalPages = pagesMetadata.length;
+          totalPagesNum.innerText = totalPages;
+          pageListCount.innerText = `${totalPages} 頁`;
+          renderPageThumbnails(pagesMetadata);
+          selectPage(1);
+        }
+      } catch(e) {}
+    }
+
+    function renderPageThumbnails(pages) {
+      pageThumbnailList.innerHTML = '';
+      pages.forEach(p => {
+        const item = document.createElement('div');
+        item.dataset.page = p.page_num;
+        item.className = 'page-thumb-item border border-slate-200 rounded p-2 bg-white hover:bg-slate-50 cursor-pointer flex justify-between items-center transition';
+        const typeLabel = p.page_type === 'scan' ? '掃描型' : (p.page_type === 'mixed' ? '混合型' : '文字型');
+        item.innerHTML = `
+          <div>
+            <div class="font-bold text-slate-800">第 ${p.page_num} 頁</div>
+            <div class="text-[10px] text-slate-400">${typeLabel} • ${p.text_blocks} 區塊</div>
+          </div>
+          <span class="status-badge text-[10px] font-semibold text-slate-500">待譯</span>
+        `;
+        item.addEventListener('click', () => selectPage(p.page_num));
+        pageThumbnailList.appendChild(item);
+      });
+    }
+
+    function updatePageListStatus(message, status) {
+      // Parse active batch page range e.g. "第 1~9 頁"
+      let startP = 1, endP = 1;
+      const match = message.match(/第\s*(\d+)\s*~\s*(\d+)\s*頁/);
+      if (match) {
+        startP = parseInt(match[1]);
+        endP = parseInt(match[2]);
+      } else {
+        const single = message.match(/第\s*(\d+)\s*頁/);
+        if (single) {
+          startP = parseInt(single[1]);
+          endP = startP;
+        }
+      }
+
+      document.querySelectorAll('.page-thumb-item').forEach(el => {
+        const page = parseInt(el.dataset.page);
+        const badge = el.querySelector('.status-badge');
+        if (!badge) return;
+
+        if (status === 'completed') {
+          badge.className = 'status-badge text-[10px] font-semibold text-emerald-600';
+          badge.innerText = '已完成';
+        } else if (page < startP) {
+          badge.className = 'status-badge text-[10px] font-semibold text-emerald-600';
+          badge.innerText = '已完成';
+        } else if (page >= startP && page <= endP) {
+          badge.className = 'status-badge text-[10px] font-bold text-blue-600 animate-pulse';
+          badge.innerText = '正在翻譯中...';
+        } else {
+          badge.className = 'status-badge text-[10px] font-semibold text-slate-400';
+          badge.innerText = '待譯';
+        }
+      });
+    }
+
     function startPolling(taskId) {
-      if (pollTimer) clearTimeout(pollTimer);
+      if (pollInterval) clearTimeout(pollInterval);
       consecutivePollErrors = 0;
 
-      const poll = async () => {
+      async function poll() {
         try {
           const res = await fetch(`/api/status/${taskId}`);
-          if (!res.ok) {
-            let errorText = `無法取得任務進度 (HTTP ${res.status})`;
-            try {
-              const errJson = await res.json();
-              if (errJson.detail) errorText = errJson.detail;
-            } catch (_) {}
-            throw new Error(errorText);
-          }
+          if (!res.ok) throw new Error('狀態查詢中斷');
           const data = await res.json();
-          // Reset error counter on successful response
           consecutivePollErrors = 0;
 
-          const progressVal = Math.min(Math.max(data.progress || 0, 0), 100);
-          progressBar.style.width = progressVal + '%';
-          progressPercent.innerText = progressVal + '%';
-          if (data.message) {
-            progressStatus.innerText = data.message;
+          // Update progress
+          sidebarProgressBar.style.width = data.progress + '%';
+          phasePercent.innerText = data.progress + '%';
+          sidebarStatusText.innerText = data.message;
+          workbenchBannerText.innerText = data.message;
+
+          // Update real-time page list status badges
+          updatePageListStatus(data.message || '', data.status);
+
+          if (data.current_phase === 2) {
+            phaseLabel.innerText = '第二階段：圖表掃描 OCR 翻譯';
+          } else {
+            phaseLabel.innerText = '第一階段：文字型翻譯';
           }
 
           if (data.status === 'completed') {
-            resultBox.classList.remove('hidden');
-            resultSummary.innerText = `翻譯成功！共處理 ${data.total_pages || 0} 頁，排版置換 ${data.translated_blocks || 0} 個文字區塊。`;
-            downloadBtn.href = `/api/download/${taskId}`;
-            const baseName = currentFile ? currentFile.name.replace(/\.pdf$/i, '') : 'translated';
-            downloadBtn.download = `${baseName}_${targetLangEl.value}.pdf`;
-            setFormDisabled(false);
+            workbenchBannerText.innerText = `全部完成！共處理 ${data.total_pages} 頁，文字層替換 ${data.translated_blocks} 個區塊，圖表 OCR 替換 ${data.ocr_blocks_translated} 個區塊。`;
+            workbenchStatsBadge.innerText = `總置換：${data.total_translated} 處`;
+            navDownloadBtn.disabled = false;
+            navDownloadBtn.onclick = () => window.location.href = `/api/download/${taskId}`;
+            startBtn.disabled = false;
+            stopBtn.classList.add('hidden');
+            // Refresh preview
+            selectPage(currentPage);
             return;
           } else if (data.status === 'failed') {
-            showError(data.error || '翻譯過程發生錯誤');
-            setFormDisabled(false);
+            alert('翻譯中斷: ' + (data.error || '不明錯誤'));
+            startBtn.disabled = false;
+            stopBtn.classList.add('hidden');
             return;
           }
 
           // Continue polling
-          pollTimer = setTimeout(poll, 1000);
+          pollInterval = setTimeout(poll, 1200);
         } catch (err) {
           consecutivePollErrors++;
-          console.warn(`輪詢異常 (${consecutivePollErrors}/${MAX_POLL_ERRORS}):`, err.message);
-
-          if (consecutivePollErrors >= MAX_POLL_ERRORS) {
-            showError(`與伺服器連線中斷 (${err.message})，請確認後端服務運作狀態。`);
-            setFormDisabled(false);
+          if (consecutivePollErrors > 3) {
+            workbenchBannerText.innerText = '連線超時，請檢查伺服器狀態。';
+            startBtn.disabled = false;
+            stopBtn.classList.add('hidden');
           } else {
-            progressStatus.innerText = `連線重試中 (${consecutivePollErrors}/${MAX_POLL_ERRORS})...`;
-            pollTimer = setTimeout(poll, 1500);
+            pollInterval = setTimeout(poll, 2000);
           }
         }
-      };
+      }
 
       poll();
     }
 
-    function showError(msg) {
-      errorBox.classList.remove('hidden');
-      errorMsg.innerText = msg;
+    // Stop button
+    stopBtn.addEventListener('click', async () => {
+      if (confirm('確定要中止當前翻譯作業嗎？')) {
+        if (pollInterval) clearTimeout(pollInterval);
+        stopBtn.classList.add('hidden');
+        startBtn.disabled = false;
+        workbenchBannerText.innerText = '正在通知伺服器中止任務...';
+        
+        // Clear active task in local storage so it won't auto-resume on reload
+        safeStorage.removeItem('foliotrans_active_task');
+
+        if (currentTaskId) {
+          try {
+            await fetch(`/api/stop/${currentTaskId}`, { method: 'POST' });
+          } catch(e) {}
+        }
+        workbenchBannerText.innerText = '已由使用者中止翻譯作業。';
+      }
+    });
+
+    // API Key Guide Modal Handlers
+    function initApiKeyGuideModal() {
+      const apiKeyGuideModal = document.getElementById('apiKeyGuideModal');
+      const openApiKeyGuideBtn = document.getElementById('openApiKeyGuideBtn');
+      const closeApiKeyGuideBtn = document.getElementById('closeApiKeyGuideBtn');
+      const modalConfirmBtn = document.getElementById('modalConfirmBtn');
+
+      if (openApiKeyGuideBtn && apiKeyGuideModal) {
+        openApiKeyGuideBtn.addEventListener('click', () => {
+          apiKeyGuideModal.classList.remove('hidden');
+        });
+        if (closeApiKeyGuideBtn) {
+          closeApiKeyGuideBtn.addEventListener('click', () => {
+            apiKeyGuideModal.classList.add('hidden');
+          });
+        }
+        if (modalConfirmBtn) {
+          modalConfirmBtn.addEventListener('click', () => {
+            apiKeyGuideModal.classList.add('hidden');
+            if (apiKeyEl) apiKeyEl.focus();
+          });
+        }
+        apiKeyGuideModal.addEventListener('click', (e) => {
+          if (e.target === apiKeyGuideModal) {
+            apiKeyGuideModal.classList.add('hidden');
+          }
+        });
+      }
+    }
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initApiKeyGuideModal);
+    } else {
+      initApiKeyGuideModal();
     }
   </script>
+
+  <!-- API Key Guided Walkthrough Modal -->
+  <div id="apiKeyGuideModal" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden border border-slate-100 flex flex-col max-h-[90vh]">
+      <!-- Header -->
+      <div class="bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-4 text-white flex justify-between items-center">
+        <div>
+          <h3 class="text-base font-bold flex items-center space-x-2">
+            <span>🔑 30秒快速取得 Google AI Key</span>
+            <span class="bg-blue-400/40 text-[11px] px-2 py-0.5 rounded-full font-semibold">官方永久免費</span>
+          </h3>
+          <p class="text-xs text-blue-100 mt-0.5">有任何 Google 帳號即可直接開啟，無需綁定信用卡</p>
+        </div>
+        <button id="closeApiKeyGuideBtn" class="text-white/80 hover:text-white text-xl leading-none font-bold p-1">&times;</button>
+      </div>
+
+      <!-- Body -->
+      <div class="p-6 space-y-4 overflow-y-auto text-sm text-slate-700">
+        <!-- Step 1 -->
+        <div class="flex items-start space-x-3">
+          <div class="w-6 h-6 rounded-full bg-blue-100 text-blue-700 font-bold flex items-center justify-center text-xs shrink-0 mt-0.5">1</div>
+          <div class="flex-1">
+            <h4 class="font-bold text-slate-800">前往 Google AI Studio</h4>
+            <p class="text-xs text-slate-500 mt-0.5">這是 Google 專為所有使用者與開發者提供的官方入口。</p>
+            <div class="mt-2">
+              <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" class="inline-flex items-center space-x-1.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs px-3.5 py-1.5 rounded-lg shadow-sm transition">
+                <span>直達 Google AI Studio API 頁面 ↗</span>
+              </a>
+            </div>
+          </div>
+        </div>
+
+        <!-- Step 2 -->
+        <div class="flex items-start space-x-3">
+          <div class="w-6 h-6 rounded-full bg-blue-100 text-blue-700 font-bold flex items-center justify-center text-xs shrink-0 mt-0.5">2</div>
+          <div class="flex-1">
+            <h4 class="font-bold text-slate-800">登入並點擊「Create API key」</h4>
+            <p class="text-xs text-slate-500 mt-0.5">使用您的日常 Google 帳號登入後，點擊藍色按鈕 <code class="bg-slate-100 px-1 py-0.5 rounded text-blue-600 font-mono text-[11px]">Create API key</code>，系統將在 3 秒內自動產生一串金鑰。</p>
+            <div class="bg-amber-50 border border-amber-200 rounded p-2 mt-1.5 text-[11px] text-amber-800 leading-relaxed">
+              💡 <strong>如果您有訂閱 Google One AI Premium ($20/月) 或 Pro：</strong><br>
+              請登入同一組 Google 帳號，同樣至 AI Studio 即可取得高配額金鑰，享受最頂級的 <strong>Gemini 1.5 Pro</strong> 超長上下文翻譯！
+            </div>
+          </div>
+        </div>
+
+        <!-- Step 3 -->
+        <div class="flex items-start space-x-3">
+          <div class="w-6 h-6 rounded-full bg-blue-100 text-blue-700 font-bold flex items-center justify-center text-xs shrink-0 mt-0.5">3</div>
+          <div class="flex-1">
+            <h4 class="font-bold text-slate-800">複製並貼回左側 API Key 欄位</h4>
+            <p class="text-xs text-slate-500 mt-0.5">複製該段代碼貼回本工具即可。您的金鑰僅會保存在您自己的電腦瀏覽器（localStorage），絕對不會外傳至任何第三方伺服器。</p>
+          </div>
+        </div>
+
+        <!-- Privacy note -->
+        <div class="bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-500 flex items-center space-x-2">
+          <span>🛡️</span>
+          <span><strong>隱私保證：</strong>全開源架構，直接由您的電腦與 Google 官方 API 對接，安全無虞。</span>
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <div class="bg-slate-50 px-6 py-3 border-t border-slate-100 flex justify-end">
+        <button id="modalConfirmBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-4 py-1.5 rounded-lg text-xs shadow-sm transition">
+          我知道了，回工具貼上 Key
+        </button>
+      </div>
+    </div>
+  </div>
 </body>
 </html>
