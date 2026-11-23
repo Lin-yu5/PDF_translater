@@ -4,12 +4,14 @@ import uuid
 import threading
 import webbrowser
 import argparse
+import importlib
 from typing import Optional
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Query, Response
 from fastapi.responses import FileResponse, JSONResponse
 import uvicorn
 import pymupdf
 
+import translator
 from translator import (
     translate_pdf_file,
     analyze_pdf_pages,
@@ -568,7 +570,7 @@ def main():
     print(f"👉 請開啟瀏覽器造訪: {url}")
     print(f"===================================================")
     threading.Timer(1.2, lambda: webbrowser.open(url)).start()
-    uvicorn.run(app, host="127.0.0.1", port=args.port)
+    uvicorn.run("app:app", host="127.0.0.1", port=args.port, reload=True)
 
 if __name__ == "__main__":
     main()

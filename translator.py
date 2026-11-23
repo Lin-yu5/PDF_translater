@@ -246,22 +246,141 @@ def load_translation_rules(target_lang_desc: str, domain: str = "general") -> st
         "Required Output Format: Valid JSON with schema: {\"translations\": [{\"id\": <int>, \"text\": \"<translated text>\"}]}."
     )
 
-def call_gemini(items: list, target_lang_desc: str, api_key: str, model: str = "gemini-2.0-flash", domain: str = "general") -> dict:
-    """Call Google Gemini API using structured JSON output with embedded skill rules and automatic fallback."""
-    user_model = (model or "gemini-2.0-flash").strip()
-    # Map non-existent or futuristic model aliases to official Gemini models
+# Cache available Gemini models per API key: {api_key: [model_names]}
+_GEMINI_AVAILABLE_MODELS_CACHE = {}
+# Track models confirmed to return 404 or 400 (unsupported) per API key: set of (api_key, model_name)
+_GEMINI_FAILED_MODELS_CACHE = set()
+
+GEMINI_PREFERRED_MODELS = [
+    "gemini-3.8-flash",
+    "gemini-3.1-flash-lite",
+    "gemini-4-hydrogen",
+    "gemini-2.0-flash",
+    "gemini-1.5-flash",
+    "gemini-1.5-pro",
+]
+
+EXCLUDED_MODEL_SUBSTRINGS = (
+    "tts", "embedding", "imagen", "image-generation", "aqa",
+    "realtime", "audio", "whisper", "speech", "bison", "gecko", "robotics"
+)
+
+def is_valid_gemini_text_model(name: str) -> bool:
+    """Check if model is suitable for text generation/translation (filters out TTS, embedding, audio models)."""
+    low = name.lower()
+    if not low.startswith("gemini-"):
+        return False
+    for sub in EXCLUDED_MODEL_SUBSTRINGS:
+        if sub in low:
+            return False
+    return True
+
+def get_available_gemini_models(api_key: str, force_refresh: bool = False) -> list:
+    """
+    Query Google Gemini ModelService (v1beta/models) to discover models supporting generateContent for TEXT.
+    Caches results per API key. Returns a list of valid text model identifiers (without 'models/' prefix).
+    """
+    global _GEMINI_AVAILABLE_MODELS_CACHE
+    clean_key = (api_key or "").strip()
+    if not clean_key:
+        return []
+
+    if not force_refresh and clean_key in _GEMINI_AVAILABLE_MODELS_CACHE:
+        return list(_GEMINI_AVAILABLE_MODELS_CACHE[clean_key])
+
+    url = f"https://generativelanguage.googleapis.com/v1beta/models?key={clean_key}"
+    try:
+        resp = requests.get(url, timeout=10)
+        if resp.status_code == 200:
+            data = resp.json()
+            models = []
+            for item in data.get("models", []):
+                methods = item.get("supportedGenerationMethods", [])
+                if "generateContent" in methods:
+                    name = item.get("name", "")
+                    clean_name = name.split("/")[-1] if "/" in name else name
+                    if clean_name and is_valid_gemini_text_model(clean_name):
+                        if clean_name not in models:
+                            models.append(clean_name)
+            if models:
+                _GEMINI_AVAILABLE_MODELS_CACHE[clean_key] = models
+                return list(models)
+    except Exception as e:
+        print(f"[Gemini API] 動態模型查詢警告: {e}")
+
+    return list(_GEMINI_AVAILABLE_MODELS_CACHE.get(clean_key, []))
+
+def select_best_gemini_model(available_models: list, requested_model: str = None) -> str:
+    """
+    Select the best Gemini model given available models.
+    Prioritizes requested_model if valid and supported, otherwise falls back to
+    gemini-3.8-flash, gemini-3.1-flash-lite, gemini-4-hydrogen, gemini-2.0-flash, then gemini-1.5-flash, etc.
+    """
+    if not available_models:
+        return requested_model or "gemini-3.8-flash"
+
+    clean_req = (requested_model or "").strip()
+    if clean_req.startswith("models/"):
+        clean_req = clean_req[len("models/"):]
+
+    if clean_req and clean_req in available_models and is_valid_gemini_text_model(clean_req):
+        return clean_req
+
+    for pref in GEMINI_PREFERRED_MODELS:
+        if pref in available_models:
+            return pref
+
+    return available_models[0]
+
+def call_gemini(items: list, target_lang_desc: str, api_key: str, model: str = "gemini-3.8-flash", domain: str = "general") -> dict:
+    """Call Google Gemini API using structured JSON output with embedded skill rules, dynamic model discovery, and automatic fallback."""
+    clean_key = (api_key or "").strip()
+    user_model = (model or "gemini-3.8-flash").strip()
+    if user_model.startswith("models/"):
+        user_model = user_model[len("models/"):]
+
+    # Map non-existent, futuristic, or TTS/audio model aliases to official Gemini text models
+    if "tts" in user_model.lower() or not is_valid_gemini_text_model(user_model):
+        print(f"[Gemini API] 偵測到不支援純文字輸出或特殊用途之模型 '{user_model}'，自動重定向至純文字推薦模型 'gemini-3.8-flash'")
+        user_model = "gemini-3.8-flash"
+
     model_aliases = {
-        "gemini-3.8-flash": "gemini-2.0-flash",
         "gemini-3.5-flash": "gemini-2.0-flash",
         "gemini-2.5-flash": "gemini-2.0-flash",
+        "gemini-2.5-flash-preview": "gemini-2.0-flash",
+        "gemini-2.5-flash-preview-tts": "gemini-2.0-flash",
         "gemini-2.5-pro": "gemini-1.5-pro",
+        "gemini-2.5-pro-preview": "gemini-1.5-pro",
         "gemini-1.5": "gemini-1.5-flash"
     }
     user_model = model_aliases.get(user_model, user_model)
 
+    # 1. Dynamic Model Discovery: check cache or query ModelService
+    available_models = get_available_gemini_models(clean_key)
+
+    # If user_model is known to have failed previously (HTTP 404/400) for this key
+    if (clean_key, user_model) in _GEMINI_FAILED_MODELS_CACHE:
+        fallback_candidates = [m for m in (available_models or GEMINI_PREFERRED_MODELS) if (clean_key, m) not in _GEMINI_FAILED_MODELS_CACHE]
+        best_m = select_best_gemini_model(fallback_candidates, "gemini-3.8-flash")
+        print(f"[Gemini API] 模型 '{user_model}' 先前已確認在該 API Key 無法使用。自動切換至備用可用模型 '{best_m}'")
+        user_model = best_m
+
+    # If available_models was successfully retrieved, ensure user_model is supported
+    if available_models:
+        if user_model not in available_models:
+            fallback_candidates = [m for m in available_models if (clean_key, m) not in _GEMINI_FAILED_MODELS_CACHE]
+            best_m = select_best_gemini_model(fallback_candidates, user_model)
+            print(f"[Gemini API] 請求的模型 '{user_model}' 不在可用模型清單中（可用模型: {', '.join(available_models[:5])}...）。自動降級切換至最佳可用模型 '{best_m}'")
+            user_model = best_m
+
+    # Build fallback chain
     fallback_chain = [user_model]
-    for alt in ["gemini-2.0-flash", "gemini-2.0-flash-lite", "gemini-1.5-flash", "gemini-1.5-pro"]:
-        if alt not in fallback_chain:
+    candidate_source = available_models if available_models else GEMINI_PREFERRED_MODELS
+    for alt in candidate_source:
+        if alt not in fallback_chain and (clean_key, alt) not in _GEMINI_FAILED_MODELS_CACHE and is_valid_gemini_text_model(alt):
+            fallback_chain.append(alt)
+    for alt in ["gemini-3.8-flash", "gemini-3.1-flash-lite", "gemini-4-hydrogen", "gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-pro"]:
+        if alt not in fallback_chain and (clean_key, alt) not in _GEMINI_FAILED_MODELS_CACHE:
             fallback_chain.append(alt)
 
     system_instruction = load_translation_rules(target_lang_desc, domain=domain)
@@ -280,9 +399,9 @@ def call_gemini(items: list, target_lang_desc: str, api_key: str, model: str = "
     }
     rate_limit_pace(4.0)
 
-    last_404_err = None
-    for target_m in fallback_chain:
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/{target_m}:generateContent?key={api_key}"
+    last_model_err = None
+    for idx, target_m in enumerate(fallback_chain):
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{target_m}:generateContent?key={clean_key}"
         try:
             resp = _post_with_retry(url, json_payload=payload, timeout=60)
             data = resp.json()
@@ -293,17 +412,43 @@ def call_gemini(items: list, target_lang_desc: str, api_key: str, model: str = "
                 if candidates and "finishReason" in candidates[0]:
                     raise RuntimeError(f"Gemini 回應受阻 (finishReason: {candidates[0]['finishReason']})")
                 raise RuntimeError(f"無法解析 Gemini API 回應格式: {str(data)[:200]}")
+
+            # If target_m succeeded, ensure it is cached as an available model
+            if clean_key in _GEMINI_AVAILABLE_MODELS_CACHE:
+                if target_m not in _GEMINI_AVAILABLE_MODELS_CACHE[clean_key]:
+                    _GEMINI_AVAILABLE_MODELS_CACHE[clean_key].append(target_m)
             return extract_translation_map(content_text)
         except FatalAPIError as fe:
-            # If 404 model not found, try the next model in fallback chain
-            if "404" in str(fe) and target_m != fallback_chain[-1]:
-                last_404_err = str(fe)
-                rate_limit_pace(1.5)
-                continue
+            err_str = str(fe)
+            is_model_incompatible = (
+                "404" in err_str or
+                ("400" in err_str and any(w in err_str.lower() for w in ["not supported", "modalit", "invalid model", "does not exist"]))
+            )
+            if is_model_incompatible:
+                last_model_err = err_str
+                _GEMINI_FAILED_MODELS_CACHE.add((clean_key, target_m))
+                if clean_key in _GEMINI_AVAILABLE_MODELS_CACHE and target_m in _GEMINI_AVAILABLE_MODELS_CACHE[clean_key]:
+                    _GEMINI_AVAILABLE_MODELS_CACHE[clean_key].remove(target_m)
+
+                print(f"[Gemini API] 模型 '{target_m}' 回傳不相容 (HTTP 404/400: {err_str[:80]}...)。正在自動降級至下一可用模型...")
+
+                # Force refresh available models from ModelService
+                refreshed = get_available_gemini_models(clean_key, force_refresh=True)
+                if refreshed:
+                    if target_m in refreshed:
+                        refreshed.remove(target_m)
+                    for alt in refreshed:
+                        if alt not in fallback_chain and (clean_key, alt) not in _GEMINI_FAILED_MODELS_CACHE:
+                            fallback_chain.append(alt)
+
+                # If there are subsequent models in fallback_chain, try the next one
+                if idx < len(fallback_chain) - 1:
+                    rate_limit_pace(1.5)
+                    continue
             raise
 
-    if last_404_err:
-        raise FatalAPIError(last_404_err)
+    if last_model_err:
+        raise FatalAPIError(last_model_err)
 
 def call_openai(items: list, target_lang_desc: str, api_key: str, model: str = "gpt-4o-mini", base_url: str = None, domain: str = "general") -> dict:
     """Call OpenAI or OpenAI-compatible API with embedded skill rules."""
@@ -367,7 +512,7 @@ def translate_blocks(items: list, provider: str, api_key: str, target_lang_desc:
         return {}
     p = (provider or "gemini").lower()
     if p == "gemini":
-        m = model or "gemini-1.5-pro"
+        m = model or "gemini-3.8-flash"
         return call_gemini(items, target_lang_desc, api_key, model=m, domain=domain)
     elif p == "claude":
         m = model or "claude-3-5-sonnet-20241022"
@@ -597,7 +742,10 @@ def sample_background_and_text_color(pix: pymupdf.Pixmap, rect: pymupdf.Rect, pa
             b_avg = max(0.0, min(1.0, b_avg))
 
             luminance = 0.299 * r_avg + 0.587 * g_avg + 0.114 * b_avg
-            text_col = (0.95, 0.95, 0.95) if luminance < 0.45 else (0.1, 0.1, 0.1)
+            # Dynamic contrast maximization: choose white or dark text based on which yields higher WCAG contrast
+            c_white = 1.0 / (luminance + 0.05)
+            c_dark = (luminance + 0.05) / 0.15
+            text_col = (0.95, 0.95, 0.95) if c_white > c_dark else (0.1, 0.1, 0.1)
 
             return (r_avg, g_avg, b_avg), text_col
     except Exception:

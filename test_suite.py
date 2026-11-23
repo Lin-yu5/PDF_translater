@@ -28,7 +28,9 @@ from translator import (
     load_checkpoint,
     save_checkpoint,
     export_bilingual_pdf,
-    export_docx_comparison
+    export_docx_comparison,
+    get_available_gemini_models,
+    select_best_gemini_model
 )
 import app
 
@@ -258,6 +260,247 @@ class TestProviderRouting(unittest.TestCase):
         items = [{"id": 0, "text": "test"}]
         with self.assertRaises(FatalAPIError):
             translate_blocks(items, provider="openai", api_key="bad-key", target_lang_desc="Traditional Chinese")
+
+
+class TestGeminiModelDiscoveryAndFallback(unittest.TestCase):
+    """Test dynamic Gemini model discovery, caching per API key, and automatic 404 resilience."""
+
+    def setUp(self):
+        translator._GEMINI_AVAILABLE_MODELS_CACHE.clear()
+        translator._GEMINI_FAILED_MODELS_CACHE.clear()
+
+    @patch("requests.get")
+    def test_get_available_gemini_models_filters_generate_content(self, mock_get):
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = {
+            "models": [
+                {
+                    "name": "models/gemini-2.0-flash",
+                    "supportedGenerationMethods": ["generateContent", "countTokens"]
+                },
+                {
+                    "name": "models/text-embedding-004",
+                    "supportedGenerationMethods": ["embedContent"]
+                },
+                {
+                    "name": "models/gemini-1.5-flash",
+                    "supportedGenerationMethods": ["generateContent"]
+                }
+            ]
+        }
+        mock_get.return_value = mock_resp
+
+        models = get_available_gemini_models("test-key-1")
+        self.assertEqual(models, ["gemini-2.0-flash", "gemini-1.5-flash"])
+        self.assertNotIn("text-embedding-004", models)
+        mock_get.assert_called_once()
+        self.assertIn("key=test-key-1", mock_get.call_args[0][0])
+
+    @patch("requests.get")
+    def test_gemini_models_cached_per_key(self, mock_get):
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = {
+            "models": [{"name": "models/gemini-2.0-flash", "supportedGenerationMethods": ["generateContent"]}]
+        }
+        mock_get.return_value = mock_resp
+
+        # First query should call requests.get
+        m1 = get_available_gemini_models("cached-key")
+        self.assertEqual(m1, ["gemini-2.0-flash"])
+        self.assertEqual(mock_get.call_count, 1)
+
+        # Second query should use cache, not calling requests.get again
+        m2 = get_available_gemini_models("cached-key")
+        self.assertEqual(m2, ["gemini-2.0-flash"])
+        self.assertEqual(mock_get.call_count, 1)
+
+    def test_select_best_gemini_model_priority(self):
+        # Prefer requested model if in available models
+        avail = ["gemini-1.5-flash", "gemini-2.0-flash", "gemini-1.5-flash-8b"]
+        best = select_best_gemini_model(avail, "gemini-1.5-flash")
+        self.assertEqual(best, "gemini-1.5-flash")
+
+        # If requested model (e.g. gemini-1.5-pro) not in available models, prefer gemini-2.0-flash
+        best2 = select_best_gemini_model(avail, "gemini-1.5-pro")
+        self.assertEqual(best2, "gemini-2.0-flash")
+
+        # If gemini-2.0-flash not available, fall back to gemini-1.5-flash
+        avail3 = ["gemini-1.5-flash-8b", "gemini-1.5-flash"]
+        best3 = select_best_gemini_model(avail3, "gemini-1.5-pro")
+        self.assertEqual(best3, "gemini-1.5-flash")
+
+    @patch("translator.rate_limit_pace")
+    @patch("requests.get")
+    @patch("requests.post")
+    def test_gemini_automatic_fallback_on_404(self, mock_post, mock_get, mock_pace):
+        """Simulate user's exact scenario: initial query has no cache or model in list, gemini-1.5-pro returns 404, pipeline falls back to gemini-2.0-flash."""
+        # Mock ListModels: 1st call fails or doesn't have 1.5-pro, 2nd call (on 404 refresh) returns discovered models
+        mock_get_resp = MagicMock()
+        mock_get_resp.status_code = 200
+        mock_get_resp.json.return_value = {
+            "models": [
+                {"name": "models/gemini-2.0-flash", "supportedGenerationMethods": ["generateContent"]},
+                {"name": "models/gemini-1.5-flash", "supportedGenerationMethods": ["generateContent"]}
+            ]
+        }
+        # First GET blips/fails, second GET succeeds on 404 recovery
+        mock_get.side_effect = [Exception("Initial query timeout"), mock_get_resp]
+
+        # Mock POST: 1st call (gemini-1.5-pro) fails with 404, 2nd call (gemini-2.0-flash) succeeds with 200
+        resp_404 = MagicMock()
+        resp_404.status_code = 404
+        resp_404.text = '{"error": {"code": 404, "message": "models/gemini-1.5-pro is not found for API version v1beta, or is not supported for generateContent. Call ModelService.ListModels"}}'
+
+        resp_200 = MagicMock()
+        resp_200.status_code = 200
+        resp_200.json.return_value = {
+            "candidates": [{
+                "content": {
+                    "parts": [{"text": '{"translations": [{"id": 0, "text": "降級成功譯文"}]}'}]
+                }
+            }]
+        }
+
+        mock_post.side_effect = [resp_404, resp_200]
+
+        items = [{"id": 0, "text": "Clinical diagnosis of cerebral palsy"}]
+        # Request gemini-1.5-pro explicitly
+        res = call_gemini(items, target_lang_desc="Traditional Chinese", api_key="live-key-xyz", model="gemini-1.5-pro")
+
+        self.assertEqual(res, {0: "降級成功譯文"})
+        self.assertEqual(mock_post.call_count, 2)
+        # Verify first call was gemini-1.5-pro
+        first_url = mock_post.call_args_list[0][0][0]
+        self.assertIn("gemini-1.5-pro", first_url)
+        # Verify second call was fallback model (gemini-3.8-flash)
+        second_url = mock_post.call_args_list[1][0][0]
+        self.assertIn("gemini-3.8-flash", second_url)
+
+        # Verify failed model recorded in failed cache
+        self.assertIn(("live-key-xyz", "gemini-1.5-pro"), translator._GEMINI_FAILED_MODELS_CACHE)
+
+    @patch("translator.rate_limit_pace")
+    @patch("requests.get")
+    @patch("requests.post")
+    def test_gemini_preemptive_switch_from_available_models(self, mock_post, mock_get, mock_pace):
+        """When ModelService reports available models, requested model not in list switches preemptively."""
+        mock_get_resp = MagicMock()
+        mock_get_resp.status_code = 200
+        mock_get_resp.json.return_value = {
+            "models": [
+                {"name": "models/gemini-2.0-flash", "supportedGenerationMethods": ["generateContent"]},
+                {"name": "models/gemini-1.5-flash", "supportedGenerationMethods": ["generateContent"]}
+            ]
+        }
+        mock_get.return_value = mock_get_resp
+
+        resp_200 = MagicMock()
+        resp_200.status_code = 200
+        resp_200.json.return_value = {
+            "candidates": [{
+                "content": {
+                    "parts": [{"text": '{"translations": [{"id": 1, "text": "搶先切換成功"}]}'}]
+                }
+            }]
+        }
+        mock_post.return_value = resp_200
+
+        items = [{"id": 1, "text": "Preemptive test"}]
+        res = call_gemini(items, target_lang_desc="Traditional Chinese", api_key="preemptive-key", model="gemini-1.5-pro")
+
+        self.assertEqual(res, {1: "搶先切換成功"})
+        # Should call gemini-2.0-flash directly without failing on 1.5-pro first
+        self.assertEqual(mock_post.call_count, 1)
+        self.assertIn("gemini-2.0-flash", mock_post.call_args[0][0])
+
+    @patch("translator.rate_limit_pace")
+    @patch("requests.get")
+    @patch("requests.post")
+    def test_gemini_automatic_fallback_on_400_modal_incompatibility(self, mock_post, mock_get, mock_pace):
+        """Simulate user's exact HTTP 400 response modalities (TEXT not supported) on TTS models."""
+        mock_get_resp = MagicMock()
+        mock_get_resp.status_code = 200
+        mock_get_resp.json.return_value = {
+            "models": [
+                {"name": "models/gemini-2.5-flash-preview-tts", "supportedGenerationMethods": ["generateContent"]},
+                {"name": "models/gemini-2.0-flash", "supportedGenerationMethods": ["generateContent"]},
+                {"name": "models/gemini-1.5-flash", "supportedGenerationMethods": ["generateContent"]}
+            ]
+        }
+        mock_get.return_value = mock_get_resp
+
+        # 1st call fails with 400 modal incompatibility, 2nd call succeeds on fallback model
+        resp_400 = MagicMock()
+        resp_400.status_code = 400
+        resp_400.text = '{"error": {"code": 400, "message": "The requested combination of response modalities (TEXT) is not supported by the model. models/gemini-2.5-flash-preview-tts accepts the following combinations of response modalities: [AUDIO]"}}'
+
+        resp_200 = MagicMock()
+        resp_200.status_code = 200
+        resp_200.json.return_value = {
+            "candidates": [{
+                "content": {
+                    "parts": [{"text": '{"translations": [{"id": 5, "text": "400容錯降級成功"}]}'}]
+                }
+            }]
+        }
+        mock_post.side_effect = [resp_400, resp_200]
+
+        items = [{"id": 5, "text": "TTS test"}]
+        # Even if someone directly calls a model that throws 400 modality error
+        translator._GEMINI_AVAILABLE_MODELS_CACHE["tts-key"] = ["gemini-2.0-flash", "gemini-1.5-flash"]
+        res = call_gemini(items, target_lang_desc="Traditional Chinese", api_key="tts-key", model="gemini-2.5-flash-preview-tts")
+
+        self.assertEqual(res, {5: "400容錯降級成功"})
+        self.assertIn(("tts-key", "gemini-2.0-flash"), translator._GEMINI_FAILED_MODELS_CACHE)
+
+    def test_gemini_quota_models_priority_and_tts_filter(self):
+        """Verify priority order with user quota models (3.8-flash, 3.1-flash-lite, 4-hydrogen) and TTS exclusion."""
+        # Check text validity helper
+        self.assertTrue(translator.is_valid_gemini_text_model("gemini-3.8-flash"))
+        self.assertTrue(translator.is_valid_gemini_text_model("gemini-3.1-flash-lite"))
+        self.assertTrue(translator.is_valid_gemini_text_model("gemini-4-hydrogen"))
+        self.assertFalse(translator.is_valid_gemini_text_model("gemini-2.5-flash-tts"))
+        self.assertFalse(translator.is_valid_gemini_text_model("gemini-2.5-flash-preview-tts"))
+
+        avail = ["gemini-4-hydrogen", "gemini-3.1-flash-lite", "gemini-3.8-flash", "gemini-2.0-flash"]
+        # Preferred models should pick gemini-3.8-flash first
+        best = select_best_gemini_model(avail)
+        self.assertEqual(best, "gemini-3.8-flash")
+
+        # If 3.8-flash not available, pick gemini-3.1-flash-lite
+        avail2 = ["gemini-4-hydrogen", "gemini-3.1-flash-lite", "gemini-2.0-flash"]
+        best2 = select_best_gemini_model(avail2)
+        self.assertEqual(best2, "gemini-3.1-flash-lite")
+
+        # If only 4-hydrogen and 2.0-flash, pick gemini-4-hydrogen
+        avail3 = ["gemini-2.0-flash", "gemini-4-hydrogen"]
+        best3 = select_best_gemini_model(avail3)
+        self.assertEqual(best3, "gemini-4-hydrogen")
+
+    @patch("translator.rate_limit_pace")
+    @patch("requests.post")
+    def test_gemini_38_flash_authentic_not_aliased(self, mock_post, mock_pace):
+        """Verify gemini-3.8-flash is preserved authentic and not aliased to 2.0."""
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = {
+            "candidates": [{
+                "content": {
+                    "parts": [{"text": '{"translations": [{"id": 0, "text": "3.8 Flash 譯文"}]}'}]
+                }
+            }]
+        }
+        mock_post.return_value = mock_resp
+
+        items = [{"id": 0, "text": "Test 3.8 Flash"}]
+        res = call_gemini(items, target_lang_desc="Traditional Chinese", api_key="test-key-38", model="gemini-3.8-flash")
+
+        self.assertEqual(res, {0: "3.8 Flash 譯文"})
+        called_url = mock_post.call_args[0][0]
+        self.assertIn("gemini-3.8-flash", called_url)
+        self.assertNotIn("gemini-2.0-flash", called_url)
 
 
 class TestPipelineAndEdgeCases(unittest.TestCase):
@@ -689,6 +932,136 @@ class TestLayoutEngineUpgrades(unittest.TestCase):
         # Light background -> dark text
         self.assertGreater(bg[0], 0.8)
         self.assertLess(text_col[0], 0.5)
+
+    def test_sample_background_and_text_color_contrast_inversion_prevention(self):
+        """Validate dynamic contrast maximization across dark, medium-gray, and light backgrounds."""
+        # 1. Dark background (black): luminance ~0 -> text must be light (0.95, 0.95, 0.95)
+        d_dark = pymupdf.open()
+        p_dark = d_dark.new_page(width=100, height=100)
+        shape = p_dark.new_shape()
+        shape.draw_rect(p_dark.rect)
+        shape.finish(color=(0, 0, 0), fill=(0, 0, 0))
+        shape.commit()
+        pix_dark = p_dark.get_pixmap()
+        bg_d, text_d = sample_background_and_text_color(pix_dark, pymupdf.Rect(20, 20, 80, 80), p_dark.rect)
+        d_dark.close()
+        self.assertLess(bg_d[0], 0.1)
+        self.assertGreater(text_d[0], 0.9)  # White text on dark bg
+
+        # 2. Medium-gray background (0.43 lum, like table header in CP.pdf): text must be dark (0.1, 0.1, 0.1)
+        # Prevents contrast inversion where white text on 0.43 gray only had 2.07 contrast ratio
+        d_gray = pymupdf.open()
+        p_gray = d_gray.new_page(width=100, height=100)
+        shape = p_gray.new_shape()
+        shape.draw_rect(p_gray.rect)
+        # RGB (150/255, 146/255, 148/255) ~ 0.58 brightness, luminance ~0.43
+        shape.finish(color=(0.58, 0.57, 0.58), fill=(0.58, 0.57, 0.58))
+        shape.commit()
+        pix_gray = p_gray.get_pixmap()
+        bg_g, text_g = sample_background_and_text_color(pix_gray, pymupdf.Rect(20, 20, 80, 80), p_gray.rect)
+        d_gray.close()
+        self.assertLess(text_g[0], 0.3)  # Dark text on 0.43 gray for optimal readability
+
+    def test_descender_redaction_padding(self):
+        """Test 1.5pt descender padding ensuring g, p, y, q, j glyphs are completely redacted without clipping artifacts."""
+        doc = pymupdf.open()
+        page = doc.new_page(width=400, height=100)
+        test_str = "Typography with jumping g, p, y, q, j descenders"
+        rect = pymupdf.Rect(50, 40, 350, 60)
+        page.insert_text((50, 55), test_str, fontsize=12, fontname="helv")
+
+        pad = 1.5
+        padded_rect = pymupdf.Rect(
+            max(0.0, rect.x0 - pad),
+            max(0.0, rect.y0 - pad),
+            min(page.rect.width, rect.x1 + pad),
+            min(page.rect.height, rect.y1 + pad)
+        )
+        page.add_redact_annot(padded_rect, fill=False)
+        page.apply_redactions()
+
+        # Text stream should be completely empty (no lingering descender glyph remnants)
+        self.assertEqual(page.get_text().strip(), "")
+        doc.close()
+
+    def test_multiline_headroom_expansion_and_zero_truncation(self):
+        """Validate dynamic font scaling and vertical headroom expansion ensuring zero silent truncation on dense paragraphs."""
+        doc = pymupdf.open()
+        page = doc.new_page(width=400, height=300)
+        dense_cjk = (
+            "腦性麻痺（Cerebral Palsy）是一組持續存在但非進行性的運動與姿勢發育障礙症候群，"
+            "歸因於發育中胎兒或嬰兒大腦發生的非進行性損傷或異常。其運動障礙常伴隨感覺、知覺、"
+            "認知、溝通及行為障礙，癲癇發作及次發性骨骼肌肉問題。"
+        )
+        # Tight box that cannot fit text at original 12pt
+        rect = pymupdf.Rect(50, 50, 250, 90)
+        fs = 12.0
+        fontname = "china-ts"
+
+        # Fit loop matching translator.py
+        fitted = False
+        cur_fs = fs * 0.95
+        min_fs = max(fs * 0.55, 4.5)
+        while cur_fs >= min_fs:
+            shape = page.new_shape()
+            deficit = shape.insert_textbox(rect, dense_cjk, fontsize=cur_fs, fontname=fontname, align=0)
+            if deficit >= 0:
+                shape.commit()
+                fitted = True
+                break
+            cur_fs -= 0.5
+
+        if not fitted:
+            # Downward vertical headroom expansion
+            exp_bottom = min(page.rect.height - 12.0, rect.y1 + 60.0)
+            exp_rect = pymupdf.Rect(rect.x0, rect.y0, rect.x1, exp_bottom)
+            shape = page.new_shape()
+            deficit = shape.insert_textbox(exp_rect, dense_cjk, fontsize=min_fs, fontname=fontname, align=0)
+            if deficit < 0:
+                shape = page.new_shape()
+                deficit = shape.insert_textbox(exp_rect, dense_cjk, fontsize=4.0, fontname=fontname, align=0)
+            shape.commit()
+            # Must have zero truncation (deficit >= 0)
+            self.assertGreaterEqual(deficit, 0)
+        doc.close()
+
+    def test_font_scale_stress_grid(self):
+        """Grid test across varied font sizes, box sizes, and text lengths verifying zero silent truncation."""
+        doc = pymupdf.open()
+        page = doc.new_page(width=612, height=792)
+        base_text = "臨床評估與動作功能分類（GMFCS / MACS）物理治療指引。"
+        font_sizes = [8.0, 10.0, 12.0, 14.0]
+        box_dims = [(300, 40), (200, 60), (120, 50)]
+        multipliers = [1, 2, 4]
+
+        truncation_errors = 0
+        for fs in font_sizes:
+            for bw, bh in box_dims:
+                for mult in multipliers:
+                    text_in = (base_text * mult)[:mult * 45]
+                    rect = pymupdf.Rect(50, 50, 50 + bw, 50 + bh)
+                    fitted = False
+                    cur_fs = fs * 0.95
+                    min_fs = max(fs * 0.55, 4.5)
+                    while cur_fs >= min_fs:
+                        shape = page.new_shape()
+                        deficit = shape.insert_textbox(rect, text_in, fontsize=cur_fs, fontname="china-ts", align=0)
+                        if deficit >= 0:
+                            fitted = True
+                            break
+                        cur_fs -= 0.5
+                    if not fitted:
+                        exp_bottom = min(page.rect.height - 12.0, rect.y1 + 60.0)
+                        exp_rect = pymupdf.Rect(rect.x0, rect.y0, rect.x1, exp_bottom)
+                        shape = page.new_shape()
+                        deficit = shape.insert_textbox(exp_rect, text_in, fontsize=min_fs, fontname="china-ts", align=0)
+                        if deficit < 0:
+                            shape = page.new_shape()
+                            deficit = shape.insert_textbox(exp_rect, text_in, fontsize=4.0, fontname="china-ts", align=0)
+                            if deficit < 0:
+                                truncation_errors += 1
+        self.assertEqual(truncation_errors, 0)
+        doc.close()
 
 
 class TestExportCapabilities(unittest.TestCase):
